@@ -77,8 +77,8 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .buscador { display: flex; gap: 8px; }
 .buscador .campo { position: relative; flex: 1; min-width: 0; }
 .buscador input {
-  width: 100%; font: inherit; font-size: 18px; color: var(--ink); background: var(--panel);
-  border: 2px solid var(--line); border-radius: 12px; padding: 12px 44px 12px 14px; min-height: 52px;
+  width: 100%; font: inherit; font-size: 17px; text-overflow: ellipsis; color: var(--ink); background: var(--panel);
+  border: 2px solid var(--line); border-radius: 12px; padding: 12px 40px 12px 12px; min-height: 52px;
 }
 .buscador input:focus { border-color: var(--accent); outline: none; }
 .buscador .x { position: absolute; right: 4px; top: 4px; width: 44px; height: 44px; border: 0; background: transparent; color: var(--muted); font-size: 22px; cursor: pointer; }
@@ -141,6 +141,7 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
   padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
 .panel-in { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 .panel .buscador input { padding-right: 14px; }
+.btn.icono { display: inline-flex; align-items: center; justify-content: center; width: 52px; padding: 0; }
 @media (prefers-reduced-motion: no-preference) { .tres button { transition: filter .1s; } }
 </style>
 
@@ -164,11 +165,11 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
   <section id="vistaBuscar" class="wrap" style="gap:12px">
     <div class="buscador">
       <div class="campo">
-        <input id="q" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Título, autor o ISBN" aria-label="Buscar libro">
+        <input id="q" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Buscar libro" aria-label="Buscar libro">
         <button class="x" id="borrarQ" type="button" aria-label="Borrar búsqueda" hidden>×</button>
       </div>
       <button class="btn" id="btnEdi" type="button">Editorial</button>
-      <button class="btn" id="btnScan" type="button" aria-label="Escanear código de barras" hidden>Escanear</button>
+      <button class="btn icono" id="btnScan" type="button" aria-label="Escanear código de barras" title="Escanear código de barras" hidden><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1.2-2h5.6L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg></button>
     </div>
 
     <div id="chipEdi" class="chip" hidden><span id="chipTxt"></span><button id="chipX" type="button" aria-label="Quitar filtro de editorial">×</button></div>
@@ -952,6 +953,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('nConectar').addEventListener('click', function () {
     var u = $('nUrl').value.trim(), c = $('nClave').value.trim(), n = $('nNombre').value.trim();
     if (!/^https?:\/\//i.test(u)) { toast('La dirección tiene que empezar con https://'); return; }
+    if (/console\.firebase\.google\.com/i.test(u) || !/(firebaseio\.com|firebasedatabase\.app|127\.0\.0\.1|localhost)/i.test(u)) { toast('Esa es la dirección de la consola. Usá la de la base: termina en firebaseio.com'); return; }
+    u = u.replace(/(firebaseio\.com|firebasedatabase\.app)\/.*$/i, '$1');
     if (c.length < 6 || /[.$#\[\]\/]/.test(c)) { toast('La clave: mínimo 6 caracteres, sin puntos ni barras'); return; }
     CFG.url = u; CFG.clave = c; CFG.nombre = n; CFG.activo = true; guardarCfg(); conectar();
   });
