@@ -348,6 +348,21 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }
     return P;
   }
+  function armarNube(filas, nombre, fecha) {
+    var P = { nombre: nombre, fecha: fecha, enc: null, eol: '\r\n', lineas: null, c: null, pos: [], cod: [], tit: [], aut: [], edi: [],
+              d1: [], d11: [], pvp: [], hay: [], ediN: [], porCod: new Map(), porCodigo: new Map() };
+    filas.forEach(function (f, i) {
+      if (!f) return;
+      var k = P.pos.length, t = String(f[1] == null ? '' : f[1]);
+      P.pos.push(i); P.cod.push(String(f[0] == null ? '' : f[0])); P.tit.push(t);
+      P.aut.push(String(f[2] == null ? '' : f[2])); P.edi.push(String(f[3] == null ? '' : f[3]));
+      P.d1.push(+f[4] || 0); P.d11.push(+f[5] || 0); P.pvp.push(+f[6] || 0);
+      P.hay.push(norm(t + ' ' + P.aut[k])); P.ediN.push(norm(P.edi[k]));
+      if (P.cod[k] && !P.porCodigo.has(P.cod[k])) P.porCodigo.set(P.cod[k], k);
+      [f[0], f[7], f[8]].forEach(function (c) { var cn = codNorm(c); if (cn.length >= 6 && !P.porCod.has(cn)) P.porCod.set(cn, k); });
+    });
+    return P;
+  }
   function aplicarOver(P, over) {
     Object.keys(over).forEach(function (p) {
       var n = +p; P.lineas[n] = over[p];
@@ -512,6 +527,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
 
   /* ---------- cambios sobre el stock y movimientos ---------- */
   function tocar(k, delta) {
+    if (!S.lineas) { S.d1[k] += delta; return S.d1[k]; }          // stock bajado de la nube: solo se lleva la cuenta
     var n = S.pos[k], f = crudo(S.lineas[n]), c = S.c;
     var ahora = num(f[c.d1]) + delta;
     f[c.d1] = fmtNum(ahora, f[c.d1].length);
@@ -555,6 +571,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var cont = $('movLista'); cont.innerHTML = '';
     var vis = visibles();
     $('movAcciones').hidden = !MOV.length;
+    $('bCsv').hidden = !!(S && !S.lineas);
     if (!vis.length) {
       var d = document.createElement('div'); d.className = 'vacio';
       var b = document.createElement('b'); b.textContent = 'Todavía no hay movimientos';
@@ -628,6 +645,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function descargarCsv() {
     if (!S) return;
+    if (!S.lineas) { aviso('Este stock viene de la nube de la PC, así que no hay un archivo para bajar. Usá “Copiar sumas / restas”.', ''); return; }
     var blob = new Blob([bytes(S.lineas.join(S.eol), S.enc)], { type: 'text/csv' });
     var nombre = S.nombre.replace(/\.csv$/i, '') + ' (movimientos ' + new Date().toISOString().slice(0, 10) + ').csv';
     try {
@@ -682,7 +700,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
 
   /* ---------- carga de archivo ---------- */
   function reiniciarBase() {
-    S = armar(CSVTXT.texto, CSVTXT.enc, CSVTXT.nombre, CSVTXT.fecha);
+    S = CSVTXT.nube ? armarNube(CSVTXT.filas, CSVTXT.nombre, CSVTXT.fecha) : armar(CSVTXT.texto, CSVTXT.enc, CSVTXT.nombre, CSVTXT.fecha);
     OVER = {}; MOV = []; APL = {}; NUBE.ses = ''; EDIS = null; sel = -1; pend = 0;
     guardarMov(); contar(); pintarFicha(); pintarResultados();
   }
@@ -759,7 +777,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         guardarMov(); contar(); pintarFicha(); pintarResultados();
         if (!$('vistaMov').hidden) pintarMov();
         var cuantos = nuevos.filter(function (x) { return +x.delta; }).length;
-        if (cuantos) toast('☁ ' + cuantos + (cuantos === 1 ? ' cambio' : ' cambios') + ' de otros');
+        if (cuantos) toast('☁ ' + cuantos + (cuantos === 1 ? ' cambio' : ' cambios') + (nuevos.every(function (x) { return x.quien === 'PC'; }) ? ' de la PC' : ' de otros'));
       }
       estadoNube('en vivo');
     }).catch(function () { estadoNube('sin conexión'); });
@@ -798,7 +816,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     estadoNube('conectando…');
     return traerSesion().then(function (s) {
       NUBE.remota = s;
-      if (!S) { estadoNube('conectada'); return; }
+      if (!S) { estadoNube(s && s.pc ? 'elegir conteo' : 'conectada'); return; }
       if (NUBE.ses && s && s.id === NUBE.ses) return iniciarFlujo();
       if (NUBE.ses) { estadoNube('conteo nuevo'); return; }       // empezaron otro conteo: hay que cargar el stock.csv nuevo
       if (!s) return crearSesion();                               // todavía no hay conteo: este celu lo abre
@@ -813,8 +831,31 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       return iniciarFlujo();
     }).catch(function () { estadoNube('sin conexión'); });
   }
+  function unirseNube(s) {
+    toast('Bajando el stock de la PC…');
+    return fetch(nubeBase() + '/base/' + s.id + '.json').then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.json();
+    }).then(function (b) {
+      var filas = [];
+      for (var i = 0; b && b['p' + i]; i++) filas = filas.concat(b['p' + i]);
+      if (!filas.length) throw new Error('el stock de la nube está vacío');
+      var fecha = new Date(s.t).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      CSVTXT = { nube: true, filas: filas, nombre: 'Stock de la PC', fecha: fecha };
+      cerrarFlujo(); NUBE.listo = false;
+      reiniciarBase();
+      NUBE.remota = s; NUBE.ses = s.id;
+      guardar('csv', CSVTXT); guardarMov();
+      FILTRO_EDI = ''; FILTRO_NOM = ''; EDIS = null;
+      estado(); pintarFicha(); pintarResultados(); pintarMov();
+      toast('✓ ' + S.pos.length.toLocaleString('es-AR') + ' libros de la PC');
+      return iniciarFlujo();
+    }).catch(function (e) { toast('No pude bajar el stock: ' + (e && e.message ? e.message : 'error')); estadoNube('sin conexión'); });
+  }
   function unirse() {
-    var s = NUBE.remota; if (!s || !S) return;
+    var s = NUBE.remota; if (!s) return;
+    if (s.pc) { unirseNube(s); return; }
+    if (!S) return;
     if (s.libros && s.libros !== S.pos.length) toast('Ojo: tu stock tiene ' + S.pos.length + ' libros y el del conteo ' + s.libros + '. ¿Es el mismo archivo?');
     NUBE.ses = s.id; guardarMov(); iniciarFlujo();
   }
@@ -840,19 +881,20 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (on && NUBE.ses && NUBE.estado === 'en vivo') t += ' Todos los celus conectados al mismo conteo se ven en el momento.';
     $('nEstado').textContent = t;
     var s = NUBE.remota, op = $('nOpc'); op.innerHTML = '';
-    if (on && S && s && s.id !== NUBE.ses) {
+    if (on && s && s.id !== NUBE.ses && (S || s.pc)) {
       var d = document.createElement('div'); d.className = 'aviso';
       var f = new Date(s.t).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-      d.textContent = NUBE.ses ? 'Empezaron un conteo nuevo (' + (s.base || '?') + ', ' + f + (s.quien ? ', ' + s.quien : '') + '). Para unirte, cargá ese mismo stock.csv y elegí “Unirme”.'
+      if (s.pc) d.textContent = (NUBE.ses ? 'La PC publicó un stock nuevo' : 'La PC publicó su stock') + ' (' + (s.libros || '?') + ' libros, ' + f + '). Al unirte se baja a este celu y reemplaza el que tenías: no hace falta cargar el archivo.';
+      else d.textContent = NUBE.ses ? 'Empezaron un conteo nuevo (' + (s.base || '?') + ', ' + f + (s.quien ? ', ' + s.quien : '') + '). Para unirte, cargá ese mismo stock.csv y elegí “Unirme”.'
         : 'Hay un conteo en curso (' + (s.base || '?') + ', ' + f + (s.quien ? ', ' + s.quien : '') + '). ¿Cargaste ese mismo stock.csv? Lo que anotes antes de elegir no se comparte.';
       op.appendChild(d);
       if (!NUBE.ses || true) {
-        var b = document.createElement('button'); b.type = 'button'; b.className = 'btn pri'; b.textContent = 'Unirme al conteo en curso';
-        b.addEventListener('click', function () { if (NUBE.ses) reiniciarBase(); unirse(); });
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'btn pri'; b.textContent = s.pc ? 'Unirme al conteo de la PC' : 'Unirme al conteo en curso';
+        b.addEventListener('click', function () { if (NUBE.ses && !s.pc) reiniciarBase(); unirse(); });
         op.appendChild(b);
       }
     }
-    $('nNuevo').hidden = !(on && S);
+    $('nNuevo').hidden = !(on && S && S.lineas && !(s && s.pc));
   }
   function guardarCfg() { return guardar('cfg', CFG); }
 
@@ -941,7 +983,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (g) { Object.keys(g).forEach(function (k) { CFG[k] = g[k]; }); }
     if (!CFG.dev) { CFG.dev = Math.random().toString(36).slice(2, 6); guardarCfg(); }
     if (m) { MOV = m.movs || []; OVER = m.over || {}; APL = m.apl || {}; NUBE.ses = m.ses || ''; }
-    if (c && c.texto) {
+    if (c && c.nube && c.filas) {
+      CSVTXT = c;
+      try { S = armarNube(c.filas, c.nombre, c.fecha); MOV.forEach(function (m) { var k = libroPorCod(m.cod); if (k != null && m.delta) S.d1[k] += m.delta; }); } catch (e) { S = null; }
+    } else if (c && c.texto) {
       CSVTXT = c;
       try { S = armar(c.texto, c.enc, c.nombre, c.fecha); aplicarOver(S, OVER); } catch (e) { S = null; }
     }
