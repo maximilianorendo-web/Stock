@@ -82,20 +82,20 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 }
 .buscador input:focus { border-color: var(--accent); outline: none; }
 .buscador .x { position: absolute; right: 4px; top: 4px; width: 44px; height: 44px; border: 0; background: transparent; color: var(--muted); font-size: 22px; cursor: pointer; }
-.ficha { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-.ficha h2 { font-size: 20px; line-height: 1.2; margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
+.ficha { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.ficha h2 { font-size: 18px; line-height: 1.2; margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
 .ficha .sub { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 .dep { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.dep .rot { font-size: 18px; color: var(--muted); font-weight: 600; }
-.dep .num { font-size: 64px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dep .rot { font-size: 15px; color: var(--muted); font-weight: 600; }
+.dep .num { font-size: 40px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
 .dep .num.cero { color: var(--bad); }
-.dep .nuevo { font-size: 30px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.dep .nuevo { font-size: 24px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .dep .nuevo.baja { color: var(--bad); }
 .otros { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
-.tres { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 10px; margin-top: 4px; }
-.tres button { appearance: none; border: 0; border-radius: 14px; min-height: 76px; font: inherit; font-size: 34px; font-weight: 800; cursor: pointer; }
+.tres { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 8px; margin-top: 2px; }
+.tres button { appearance: none; border: 0; border-radius: 14px; min-height: 52px; font: inherit; font-size: 26px; font-weight: 800; cursor: pointer; }
 .tres .mas, .tres .menos { background: var(--accent-soft); color: var(--accent); }
-.tres .ok { background: var(--accent); color: var(--accent-ink); font-size: 28px; }
+.tres .ok { background: var(--accent); color: var(--accent-ink); font-size: 20px; }
 .tres button:active { filter: brightness(.9); }
 .tres button[disabled] { opacity: .4; }
 .lista { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
@@ -108,6 +108,8 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .fila .m { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
 .fila .d { font-weight: 800; font-size: 20px; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
 .fila .d.cero { color: var(--bad); }
+.visto { font-size: 11px; color: var(--good); opacity: .85; font-variant-numeric: tabular-nums; }
+.fila .visto { margin-top: 1px; }
 .nota { color: var(--muted); font-size: 14px; padding: 8px 2px; }
 .vacio { text-align: center; color: var(--muted); padding: 28px 12px; background: var(--panel); border: 1px dashed var(--line); border-radius: 14px; }
 .vacio b { display: block; color: var(--ink); font-size: 17px; margin-bottom: 6px; }
@@ -142,6 +144,28 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .panel-in { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 .panel .buscador input { padding-right: 14px; }
 .btn.icono { display: inline-flex; align-items: center; justify-content: center; width: 52px; padding: 0; }
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pager .pg { color: var(--muted); font-size: 14px; font-weight: 600; text-align: center; }
+button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line); background: transparent; color: inherit; font: inherit; font-size: 40px; font-weight: 800; line-height: 1; padding: 0 4px; cursor: text; }
+.num-in { font: inherit; font-size: 40px; font-weight: 800; line-height: 1.1; width: 4.5ch; color: var(--ink); background: var(--panel); border: 2px solid var(--accent); border-radius: 10px; padding: 0 6px; }
+#scan .barra2 { background: #111; color: #fff; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px; }
+#scan .modos { display: grid; grid-template-columns: 1fr 1fr; background: #262b38; border-radius: 10px; padding: 3px; gap: 3px; }
+#scan .modos button { appearance: none; border: 0; background: transparent; color: #aab3c8; font: inherit; font-weight: 600; min-height: 40px; border-radius: 8px; }
+#scan .modos button[aria-pressed="true"] { background: #fff; color: #111; }
+#scan .scan-txt { min-height: 44px; line-height: 1.3; }
+#scan .scan-txt b { display: block; font-size: 16px; overflow-wrap: anywhere; }
+#scan .scan-txt span { color: #aab3c8; font-size: 14px; }
+#scan .scan-acc { display: flex; gap: 8px; }
+#scan .scan-acc .btn { flex: 1; background: #262b38; color: #fff; border-color: #3a4256; }
+#scan .scan-acc .btn.pri { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.rev { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+.rev:first-child { border-top: 0; }
+.rev .txt { flex: 1; min-width: 0; }
+.rev .t { font-weight: 600; overflow-wrap: anywhere; }
+.rev .m { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.rev input { font: inherit; font-size: 18px; font-weight: 700; width: 4.5ch; text-align: center; color: var(--ink); background: var(--panel); border: 2px solid var(--line); border-radius: 8px; padding: 6px 2px; min-height: 40px; }
+.rev .dif { font-weight: 800; min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+.rev .dif.mas { color: var(--good); } .rev .dif.menos { color: var(--bad); }
 @media (prefers-reduced-motion: no-preference) { .tres button { transition: filter .1s; } }
 </style>
 
@@ -177,8 +201,9 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
     <div id="ficha" class="ficha" hidden>
       <h2 id="fTit"></h2>
       <div class="sub" id="fSub"></div>
+      <div class="visto" id="fVisto" hidden></div>
       <div class="dep" aria-live="polite">
-        <span class="rot">Dep 1:</span><span class="num" id="fDep">0</span><span class="nuevo" id="fNuevo" hidden></span>
+        <span class="rot">Dep 1:</span><button type="button" class="num" id="fDep" aria-label="Tocá para escribir cuántos hay">0</button><input id="fIn" class="num-in" type="number" inputmode="numeric" min="0" max="99999" step="1" aria-label="Cuántos hay" hidden><span class="nuevo" id="fNuevo" hidden></span>
       </div>
       <div class="otros"><span id="fDep11"></span><span id="fPvp"></span><span id="fCod"></span></div>
       <div class="tres">
@@ -188,6 +213,7 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
       </div>
     </div>
 
+    <div id="avisoConteo" class="aviso" hidden style="display:flex;gap:10px;align-items:center;justify-content:space-between"><span id="avisoConteoTxt"></span><button class="btn chico" id="avisoConteoBtn" type="button">Revisar</button></div>
     <div id="resultados"></div>
   </section>
 
@@ -239,7 +265,24 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 </div>
 <div id="scan" hidden>
   <video id="video" playsinline muted></video>
-  <div class="barra"><span id="scanTxt">Apuntá al código de barras del libro</span><button class="btn" id="scanCerrar" type="button">Cerrar</button></div>
+  <div class="barra2">
+    <div class="modos"><button type="button" id="mCons" aria-pressed="true">Consultar</button><button type="button" id="mCont" aria-pressed="false">Contar</button></div>
+    <div class="scan-txt" id="scanTxt" aria-live="polite"></div>
+    <div class="scan-acc"><button class="btn" id="scanCerrar" type="button">Cerrar</button><button class="btn" id="scanMenos" type="button" hidden>−1 último</button><button class="btn pri" id="scanFin" type="button" hidden>Terminar</button></div>
+  </div>
+</div>
+<div id="revPanel" class="panel" hidden>
+  <div class="panel-in">
+    <h2 style="margin:0;font-size:18px">Revisión del conteo</h2>
+    <div class="nota" id="revNota"></div>
+    <div id="revLista" class="lista"></div>
+    <div class="acciones">
+      <button class="btn pri ancho" id="revAplicar" type="button">Aplicar al stock</button>
+      <button class="btn" id="revSeguir" type="button">Seguir escaneando</button>
+      <button class="btn" id="revCerrar" type="button">Cerrar</button>
+      <button class="btn ancho" id="revDescartar" type="button">Descartar el conteo</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -258,6 +301,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   var NUBE = { ses: '', remota: null, estado: 'apagada', listo: false, es: null, poll: null };
   var FILTRO_EDI = '', FILTRO_NOM = '', EDIS = null;
   var sel = -1, pend = 0, res = [], toastT = null;
+  var PAG = 0, PAG_ULT = '', TAM = 15;     // resultados por página
+  var CONTEO = {}, ORDEN = [], ULTLIB = null;    // conteo por escáner: código -> {cod, tit, n}
 
   /* ---------- texto y números ---------- */
   function norm(t) {
@@ -324,7 +369,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
               d1: ix('dep1'), d11: ix('dep11con', 'dep11'), tot: ix('canttotal'), pvp: ix('pvp'), isbn: ix('isbn'), barra: ix('codbarra') };
     if (c.cod < 0 || c.tit < 0 || c.d1 < 0) throw new Error('El archivo no parece un stock.csv: le faltan las columnas Codigo, TITULO o Dep 1.');
     var P = { nombre: nombre, fecha: fecha, enc: enc, eol: eol, lineas: lineas, c: c, pos: [], cod: [], tit: [], aut: [], edi: [],
-              d1: [], d11: [], pvp: [], hay: [], ediN: [], porCod: new Map(), porCodigo: new Map() };
+              d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
     for (var n = 1; n < lineas.length; n++) {
       var l = lineas[n];
       if (!l.trim()) continue;
@@ -341,7 +386,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       P.d11.push(c.d11 >= 0 ? num(f[c.d11]) : 0);
       P.pvp.push(c.pvp >= 0 ? num(f[c.pvp]) : 0);
       P.hay.push(norm(t + ' ' + P.aut[k]));
-      P.ediN.push(norm(P.edi[k]));
+      P.ediN.push(norm(P.edi[k])); P.titN.push(norm(t));
       if (P.cod[k] && !P.porCodigo.has(P.cod[k])) P.porCodigo.set(P.cod[k], k);
       [c.cod, c.isbn, c.barra].forEach(function (j) {
         if (j >= 0) { var cn = codNorm(f[j]); if (cn.length >= 6 && !P.porCod.has(cn)) P.porCod.set(cn, k); }
@@ -351,14 +396,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function armarNube(filas, nombre, fecha) {
     var P = { nombre: nombre, fecha: fecha, enc: null, eol: '\r\n', lineas: null, c: null, pos: [], cod: [], tit: [], aut: [], edi: [],
-              d1: [], d11: [], pvp: [], hay: [], ediN: [], porCod: new Map(), porCodigo: new Map() };
+              d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
     filas.forEach(function (f, i) {
       if (!f) return;
       var k = P.pos.length, t = String(f[1] == null ? '' : f[1]);
       P.pos.push(i); P.cod.push(String(f[0] == null ? '' : f[0])); P.tit.push(t);
       P.aut.push(String(f[2] == null ? '' : f[2])); P.edi.push(String(f[3] == null ? '' : f[3]));
       P.d1.push(+f[4] || 0); P.d11.push(+f[5] || 0); P.pvp.push(+f[6] || 0);
-      P.hay.push(norm(t + ' ' + P.aut[k])); P.ediN.push(norm(P.edi[k]));
+      P.hay.push(norm(t + ' ' + P.aut[k])); P.ediN.push(norm(P.edi[k])); P.titN.push(norm(t));
       if (P.cod[k] && !P.porCodigo.has(P.cod[k])) P.porCodigo.set(P.cod[k], k);
       [f[0], f[7], f[8]].forEach(function (c) { var cn = codNorm(c); if (cn.length >= 6 && !P.porCod.has(cn)) P.porCod.set(cn, k); });
     });
@@ -446,7 +491,6 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var qn = norm(q);
     if (!qn && !FILTRO_EDI) return [];
     var pats = qn ? qn.split(' ').map(function (w) { return new RegExp('(^|[^a-z0-9])' + esc(w)); }) : [];
-    var primera = qn.split(' ')[0];
     var out = [];
     for (var i = 0; i < S.hay.length; i++) {
       if (FILTRO_EDI && S.ediN[i] !== FILTRO_EDI) continue;
@@ -454,24 +498,34 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       for (var j = 0; j < pats.length; j++) if (!pats[j].test(h)) { ok = false; break; }
       if (ok) out.push(i);
     }
-    out.sort(function (a, b) {
-      if (primera) {
-        var sa = S.hay[a].indexOf(primera) === 0 ? 0 : 1, sb = S.hay[b].indexOf(primera) === 0 ? 0 : 1;
-        if (sa !== sb) return sa - sb;
-      }
-      var da = S.d1[a] > 0 ? 0 : 1, db2 = S.d1[b] > 0 ? 0 : 1;
-      if (da !== db2) return da - db2;
-      return S.hay[a] < S.hay[b] ? -1 : 1;
-    });
+    out.sort(function (a, b) { return S.titN[a] < S.titN[b] ? -1 : S.titN[a] > S.titN[b] ? 1 : a - b; });      // de la A a la Z
     return out;
   }
+  var VISTO = {};
+  function armarVisto() {
+    VISTO = {};
+    visibles().forEach(function (m) {
+      if (m.quien === 'PC' || String(m.id).indexOf('pc-') === 0) return;      // lo de la PC no es un conteo
+      if (!VISTO[m.cod] || m.t > VISTO[m.cod]) VISTO[m.cod] = m.t;
+    });
+  }
+  function textoVisto(k) {
+    var t = VISTO[S.cod[k]]; if (!t) return '';
+    var d = new Date(t), z = function (n) { return (n < 10 ? '0' : '') + n; };
+    return '✓ ' + d.getDate() + '/' + (d.getMonth() + 1) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes());
+  }
   function pintarResultados() {
+    armarVisto();
     var q = $('q').value.trim();
     $('borrarQ').hidden = !q;
     $('chipEdi').hidden = !FILTRO_EDI;
     if (FILTRO_EDI) $('chipTxt').textContent = 'Editorial: ' + FILTRO_NOM;
     if (!S || (!q && !FILTRO_EDI)) { res = []; if (sel < 0) pintarVacio(); else $('resultados').innerHTML = ''; return; }
     res = buscar(q);
+    var clavePag = q + '|' + FILTRO_EDI;
+    if (clavePag !== PAG_ULT) { PAG = 0; PAG_ULT = clavePag; }          // otra búsqueda: vuelve a la página 1
+    var paginas = Math.max(1, Math.ceil(res.length / TAM));
+    if (PAG >= paginas) PAG = paginas - 1;
     var r = $('resultados'); r.innerHTML = '';
     if (!res.length) {
       var d = document.createElement('div'); d.className = 'vacio';
@@ -480,23 +534,29 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       d.appendChild(b); d.appendChild(p); r.appendChild(d); return;
     }
     var caja = document.createElement('div'); caja.className = 'lista'; caja.setAttribute('role', 'listbox');
-    res.slice(0, 40).forEach(function (k) {
+    res.slice(PAG * TAM, PAG * TAM + TAM).forEach(function (k) {
       var f = document.createElement('button'); f.type = 'button'; f.className = 'fila';
       f.setAttribute('role', 'option'); f.setAttribute('aria-selected', k === sel);
       var t = document.createElement('div'); t.className = 'txt';
       var a = document.createElement('div'); a.className = 't'; a.textContent = S.tit[k];
       var m = document.createElement('div'); m.className = 'm'; m.textContent = [S.aut[k], S.edi[k]].filter(Boolean).join(' · ');
       t.appendChild(a); t.appendChild(m);
+      var tv = textoVisto(k);
+      if (tv) { var v = document.createElement('div'); v.className = 'visto'; v.textContent = tv; t.appendChild(v); }
       var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]);
       f.appendChild(t); f.appendChild(d);
       f.addEventListener('click', function () { elegir(k); });
       caja.appendChild(f);
     });
     r.appendChild(caja);
-    if (res.length > 40) {
-      var n = document.createElement('div'); n.className = 'nota';
-      n.textContent = 'Son ' + res.length + ' resultados: se muestran los primeros 40. Sumá una palabra para acotar.';
-      r.appendChild(n);
+    if (res.length > TAM) {
+      var pager = document.createElement('div'); pager.className = 'pager'; pager.style.marginTop = '10px';
+      var ant = document.createElement('button'); ant.type = 'button'; ant.className = 'btn chico'; ant.textContent = '‹ Anterior'; ant.disabled = PAG === 0;
+      var sig = document.createElement('button'); sig.type = 'button'; sig.className = 'btn chico'; sig.textContent = 'Siguiente ›'; sig.disabled = PAG >= paginas - 1;
+      var pg = document.createElement('div'); pg.className = 'pg'; pg.textContent = res.length + ' resultados · página ' + (PAG + 1) + ' de ' + paginas;
+      var ir = function (d) { PAG += d; pintarResultados(); $('resultados').scrollIntoView({ block: 'start' }); };
+      ant.addEventListener('click', function () { ir(-1); }); sig.addEventListener('click', function () { ir(1); });
+      pager.appendChild(ant); pager.appendChild(pg); pager.appendChild(sig); r.appendChild(pager);
     }
     if (res.length === 1 && sel !== res[0]) elegir(res[0], true);
   }
@@ -504,10 +564,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     sel = k; pend = 0; pintarFicha();
     if (!silencioso) { pintarResultados(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   }
+  var fichaSel = -2;
   function pintarFicha() {
     var f = $('ficha');
-    if (sel < 0 || !S) { f.hidden = true; return; }
+    if (sel < 0 || !S) { f.hidden = true; fichaSel = -2; return; }
     f.hidden = false;
+    if (fichaSel !== sel) { fichaSel = sel; $('fIn').hidden = true; $('fDep').hidden = false; }
+    armarVisto();
+    var tvf = textoVisto(sel), fv = $('fVisto'); fv.hidden = !tvf; fv.textContent = tvf;
     $('fTit').textContent = S.tit[sel];
     $('fSub').textContent = [S.aut[sel], S.edi[sel]].filter(Boolean).join(' · ');
     var d = S.d1[sel];
@@ -519,6 +583,19 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('fPvp').textContent = S.pvp[sel] ? 'PVP ' + pesos(S.pvp[sel]) : '';
     $('fCod').textContent = S.cod[sel];
     $('bMenos').disabled = d + pend <= 0;
+  }
+  function editarCant(ini) {
+    if (sel < 0 || !S) return;
+    var i = $('fIn'); $('fDep').hidden = true; i.hidden = false;
+    i.value = ini != null ? ini : String(S.d1[sel] + pend); i.focus();
+    if (ini == null) i.select();
+  }
+  function aplicarCant(cancelar) {
+    var i = $('fIn'); if (i.hidden) return;
+    var v = parseInt(i.value, 10);
+    i.hidden = true; $('fDep').hidden = false;
+    if (!cancelar && sel >= 0 && !isNaN(v) && v >= 0) pend = Math.min(v, 99999) - S.d1[sel];
+    pintarFicha();
   }
   function cambiar(p) {
     if (sel < 0) return;
@@ -703,6 +780,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function reiniciarBase() {
     S = CSVTXT.nube ? armarNube(CSVTXT.filas, CSVTXT.nombre, CSVTXT.fecha) : armar(CSVTXT.texto, CSVTXT.enc, CSVTXT.nombre, CSVTXT.fecha);
     OVER = {}; MOV = []; APL = {}; NUBE.ses = ''; EDIS = null; sel = -1; pend = 0;
+    CONTEO = {}; ORDEN = []; ULTLIB = null; guardarConteo();
     guardarMov(); contar(); pintarFicha(); pintarResultados();
   }
   function cargarArchivo(file) {
@@ -899,24 +977,136 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function guardarCfg() { return guardar('cfg', CFG); }
 
-  /* ---------- escáner (solo donde el navegador lo permite) ---------- */
-  var scanStream = null, scanTimer = null;
+  /* ---------- escáner: Consultar (un código y listo) o Contar (sigue abierto y va sumando) ---------- */
+  var scanStream = null, scanTimer = null, MODO = 'cons', ULT = '', TULT = 0, AC = null;
+  try { MODO = localStorage.getItem('modoScan') === 'cont' ? 'cont' : 'cons'; } catch (e) {}
+  function guardarConteo() { guardar('conteo', { c: CONTEO, o: ORDEN }); pintarAvisoConteo(); }
+  function resumenConteo() { var e = 0; ORDEN.forEach(function (c) { e += CONTEO[c].n; }); return { t: ORDEN.length, e: e }; }
+  function pintarAvisoConteo() {
+    var r = resumenConteo(), a = $('avisoConteo');
+    a.hidden = !r.t || !S;
+    if (r.t) $('avisoConteoTxt').textContent = 'Conteo sin terminar: ' + r.e + ' ejemplares de ' + r.t + (r.t === 1 ? ' título' : ' títulos');
+  }
+  function pitar(ok) {
+    try {
+      AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+      var o = AC.createOscillator(), g = AC.createGain();
+      o.frequency.value = ok ? 880 : 220; g.gain.value = 0.08; o.connect(g); g.connect(AC.destination);
+      o.start(); o.stop(AC.currentTime + 0.09);
+    } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate(ok ? 40 : [60, 40, 60]); } catch (e) {}
+  }
+  function textoScan(msg, mal) {
+    var el = $('scanTxt'); el.innerHTML = '';
+    var b = document.createElement('b'), sp = document.createElement('span');
+    var r = resumenConteo();
+    b.textContent = msg || (MODO === 'cont' ? 'Apuntá a cada libro: suena y se cuenta' : 'Apuntá al código de barras del libro');
+    if (mal) b.style.color = '#ff8585';
+    sp.textContent = MODO === 'cont' ? (r.t ? 'Contados: ' + r.e + ' ejemplares · ' + r.t + (r.t === 1 ? ' título' : ' títulos') : 'Todavía no contaste nada') : '';
+    el.appendChild(b); el.appendChild(sp);
+  }
+  function setModo(m) {
+    MODO = m; try { localStorage.setItem('modoScan', m); } catch (e) {}
+    $('mCons').setAttribute('aria-pressed', m === 'cons'); $('mCont').setAttribute('aria-pressed', m === 'cont');
+    $('scanMenos').hidden = $('scanFin').hidden = m !== 'cont';
+    textoScan();
+  }
   function cerrarScan() {
     clearInterval(scanTimer); scanTimer = null;
     if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; }
     $('scan').hidden = true;
   }
+  function procesarCodigo(cod) {
+    if (!S) return;
+    var k = libroPorCod(cod);
+    if (MODO === 'cons') { cerrarScan(); $('q').value = cod; nuevaBusqueda(); return; }
+    if (k == null) { pitar(false); textoScan('No está en el stock: ' + cod, true); return; }
+    var c = S.cod[k];
+    if (!CONTEO[c]) { CONTEO[c] = { cod: c, tit: S.tit[k], n: 0 }; ORDEN.push(c); }
+    CONTEO[c].n++; ULTLIB = c;
+    guardarConteo(); pitar(true);
+    textoScan(S.tit[k] + ' · contados ' + CONTEO[c].n + ' (sistema ' + S.d1[k] + ')');
+  }
   function abrirScan() {
+    if (!S) { toast('Primero cargá el stock'); return; }
     var det;
     try { det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'code_128'] }); } catch (e) { toast('Este navegador no puede leer códigos'); return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function (s) {
       scanStream = s; var v = $('video'); v.srcObject = s; $('scan').hidden = false; v.play();
+      ULT = ''; TULT = 0; setModo(MODO);
       scanTimer = setInterval(function () {
         det.detect(v).then(function (r) {
-          if (r && r.length) { var cod = r[0].rawValue; cerrarScan(); $('q').value = cod; sel = -1; pintarFicha(); pintarResultados(); }
+          if (!r || !r.length) return;
+          var cod = r[0].rawValue, ahora = Date.now();
+          if (cod === ULT && ahora - TULT < 1500) { TULT = ahora; return; }   // el mismo libro frente a la cámara no se cuenta dos veces
+          ULT = cod; TULT = ahora; procesarCodigo(cod);
         }).catch(function () {});
       }, 250);
     }).catch(function () { toast('No tengo permiso para usar la cámara'); });
+  }
+  function menosUltimo() {
+    var c = ULTLIB; if (!c || !CONTEO[c]) return;
+    CONTEO[c].n--;
+    var tit = CONTEO[c].tit;
+    if (CONTEO[c].n <= 0) { delete CONTEO[c]; ORDEN = ORDEN.filter(function (x) { return x !== c; }); ULTLIB = null; }
+    guardarConteo(); pitar(true);
+    textoScan('−1 · ' + tit + (CONTEO[c] ? ' · contados ' + CONTEO[c].n : ' · sacado del conteo'));
+  }
+  function abrirRev() {
+    if (!ORDEN.length) { toast('Todavía no contaste nada'); return; }
+    $('revPanel').hidden = false; pintarRev();
+  }
+  function cerrarRev() { $('revPanel').hidden = true; }
+  function pintarRev() {
+    var l = $('revLista'); l.innerHTML = '';
+    ORDEN.forEach(function (c) {
+      var o = CONTEO[c], k = libroPorCod(c);
+      var f = document.createElement('div'); f.className = 'rev';
+      var t = document.createElement('div'); t.className = 'txt';
+      var a = document.createElement('div'); a.className = 't'; a.textContent = o.tit;
+      var m = document.createElement('div'); m.className = 'm'; t.appendChild(a); t.appendChild(m);
+      var i = document.createElement('input'); i.type = 'number'; i.inputMode = 'numeric'; i.min = '0'; i.value = String(o.n); i.setAttribute('aria-label', 'Contados de ' + o.tit);
+      var d = document.createElement('div'); d.className = 'dif';
+      var x = document.createElement('button'); x.type = 'button'; x.className = 'btn chico'; x.textContent = '×'; x.setAttribute('aria-label', 'Sacar del conteo');
+      function ver() {
+        var sis = k == null ? null : S.d1[k], dif = sis == null ? 0 : o.n - sis;
+        m.textContent = k == null ? 'ya no está en tu stock' : 'Sistema: ' + sis + (dif ? '' : ' · coincide');
+        d.textContent = k == null ? '' : dif ? (dif > 0 ? '+' : '−') + Math.abs(dif) : '✓';
+        d.className = 'dif ' + (dif > 0 ? 'mas' : dif < 0 ? 'menos' : '');
+      }
+      i.addEventListener('input', function () { var v = parseInt(i.value, 10); if (!isNaN(v) && v >= 0) { o.n = Math.min(v, 99999); guardarConteo(); ver(); resumenRev(); } });
+      x.addEventListener('click', function () { delete CONTEO[c]; ORDEN = ORDEN.filter(function (y) { return y !== c; }); guardarConteo(); if (!ORDEN.length) cerrarRev(); else pintarRev(); });
+      ver(); f.appendChild(t); f.appendChild(i); f.appendChild(d); f.appendChild(x); l.appendChild(f);
+    });
+    resumenRev();
+  }
+  function resumenRev() {
+    var con = 0, sin = 0;
+    ORDEN.forEach(function (c) { var k = libroPorCod(c); if (k == null) return; if (CONTEO[c].n !== S.d1[k]) con++; else sin++; });
+    $('revNota').textContent = con + ' con diferencia · ' + sin + ' coinciden. Al aplicar, el stock queda con lo contado. Ojo: si hay ejemplares en otro lugar que no contaste, corregí la cantidad antes.';
+    $('revAplicar').textContent = 'Aplicar al stock (' + (con + sin) + ')';
+  }
+  var confRev = false;
+  function aplicarRev() {
+    var b = $('revAplicar');
+    if (!confRev) { confRev = true; b.textContent = 'Tocá de nuevo para aplicar'; setTimeout(function () { confRev = false; if (!$('revPanel').hidden) resumenRev(); }, 4000); return; }
+    confRev = false;
+    var cambios = 0, iguales = 0;
+    ORDEN.slice().forEach(function (c) {
+      var k = libroPorCod(c); if (k == null) return;
+      var delta = CONTEO[c].n - S.d1[k];
+      registrar(k, delta); if (delta) cambios++; else iguales++;
+    });
+    CONTEO = {}; ORDEN = []; ULTLIB = null; guardarConteo(); cerrarRev();
+    contar(); pintarFicha(); pintarResultados();
+    toast('✓ ' + cambios + ' ajustados · ' + iguales + ' coinciden');
+  }
+  var confDesc = false;
+  function descartarRev() {
+    var b = $('revDescartar');
+    if (!confDesc) { confDesc = true; b.textContent = 'Tocá de nuevo para descartar todo'; setTimeout(function () { confDesc = false; b.textContent = 'Descartar el conteo'; }, 4000); return; }
+    confDesc = false; b.textContent = 'Descartar el conteo';
+    CONTEO = {}; ORDEN = []; ULTLIB = null; guardarConteo(); cerrarRev(); toast('Conteo descartado');
   }
 
   /* ---------- arranque ---------- */
@@ -950,6 +1140,21 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('bCsv').addEventListener('click', descargarCsv);
   $('bBorrar').addEventListener('click', borrarLista);
   $('scanCerrar').addEventListener('click', cerrarScan);
+  $('mCons').addEventListener('click', function () { setModo('cons'); });
+  $('mCont').addEventListener('click', function () { setModo('cont'); });
+  $('scanMenos').addEventListener('click', menosUltimo);
+  $('scanFin').addEventListener('click', function () { cerrarScan(); abrirRev(); });
+  $('revAplicar').addEventListener('click', aplicarRev);
+  $('revSeguir').addEventListener('click', function () { cerrarRev(); setModo('cont'); abrirScan(); });
+  $('revCerrar').addEventListener('click', cerrarRev);
+  $('revDescartar').addEventListener('click', descartarRev);
+  $('avisoConteoBtn').addEventListener('click', abrirRev);
+  $('fDep').addEventListener('click', function () { editarCant(); });
+  $('fIn').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); aplicarCant(false); }
+    else if (e.key === 'Escape') { e.preventDefault(); aplicarCant(true); }
+  });
+  $('fIn').addEventListener('blur', function () { aplicarCant(false); });
   $('nConectar').addEventListener('click', function () {
     var u = $('nUrl').value.trim(), c = $('nClave').value.trim(), n = $('nNombre').value.trim();
     if (!/^https?:\/\//i.test(u)) { toast('La dirección tiene que empezar con https://'); return; }
@@ -970,19 +1175,21 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   document.addEventListener('keydown', function (e) {                // en la compu: + − Enter sin tocar la pantalla
     var t = e.target && e.target.tagName;
     if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON' || e.ctrlKey || e.altKey || e.metaKey) return;
-    if (!$('ediPanel').hidden || !$('scan').hidden || $('vistaBuscar').hidden || sel < 0) return;
+    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || $('vistaBuscar').hidden || sel < 0) return;
+    if (/^[0-9]$/.test(e.key)) { editarCant(''); return; }          // tipear un número abre el cuadro de cantidad
     if (e.key === '+' || e.key === '=') { cambiar(1); e.preventDefault(); }
     else if (e.key === '-') { cambiar(-1); e.preventDefault(); }
     else if (e.key === 'Enter') { confirmar(); e.preventDefault(); }
     else if (e.key === '/') { $('q').focus(); e.preventDefault(); }
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); } });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && NUBE.listo) { bajar(); subirPendientes(); } });
   window.addEventListener('online', function () { if (nubeOn()) { if (NUBE.listo) { bajar(); subirPendientes(); } else conectar(); } });
 
   pintarVacio();
-  Promise.all([leer('csv'), leer('mov'), leer('cfg')]).then(function (r) {
-    var c = r[0], m = r[1], g = r[2];
+  Promise.all([leer('csv'), leer('mov'), leer('cfg'), leer('conteo')]).then(function (r) {
+    var c = r[0], m = r[1], g = r[2], cn = r[3];
+    if (cn && cn.c && cn.o) { CONTEO = cn.c; ORDEN = cn.o; }
     if (g) { Object.keys(g).forEach(function (k) { CFG[k] = g[k]; }); }
     if (!CFG.dev) { CFG.dev = Math.random().toString(36).slice(2, 6); guardarCfg(); }
     if (m) { MOV = m.movs || []; OVER = m.over || {}; APL = m.apl || {}; NUBE.ses = m.ses || ''; }
@@ -993,7 +1200,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       CSVTXT = c;
       try { S = armar(c.texto, c.enc, c.nombre, c.fecha); aplicarOver(S, OVER); } catch (e) { S = null; }
     }
-    estado(); contar(); pintarResultados();
+    estado(); contar(); pintarResultados(); pintarAvisoConteo();
     if (nubeOn()) conectar();
   });
 })();
