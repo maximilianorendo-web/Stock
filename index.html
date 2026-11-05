@@ -872,7 +872,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       .catch(function () { estadoNube('sin conexión'); })
       .then(function () {
         subiendo = false;
-        if (NUBE.estado === 'en vivo' && MOV.some(function (m) { return !m.subido && !m.ajeno; })) setTimeout(subirPendientes, 400);
+        if (NUBE.estado === 'Ok' && MOV.some(function (m) { return !m.subido && !m.ajeno; })) setTimeout(subirPendientes, 400);
       });
   }
   function bajar() {
@@ -897,7 +897,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var cuantos = nuevos.filter(function (x) { return +x.delta; }).length;
         if (cuantos) toast('☁ ' + cuantos + (cuantos === 1 ? ' cambio' : ' cambios') + (nuevos.every(function (x) { return x.quien === 'PC'; }) ? ' de la PC' : ' de otros'));
       }
-      estadoNube('en vivo');
+      estadoNube('Ok');
     }).catch(function () { estadoNube('sin conexión'); });
   }
   var tb = null;
@@ -921,7 +921,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }).catch(function () { estadoNube('sin conexión'); });
   }
   function iniciarFlujo() {
-    NUBE.listo = true; estadoNube('en vivo');
+    NUBE.listo = true; estadoNube('Ok');
     return bajar().then(function () {
       subirPendientes(); abrirSSE();
       clearInterval(NUBE.poll); NUBE.poll = setInterval(ciclo, 20000);
@@ -996,7 +996,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('nDesc').hidden = !CFG.activo;
     $('nConectar').textContent = CFG.activo ? 'Guardar y reconectar' : 'Conectar';
     var t = !CFG.activo ? 'La nube está apagada: cada celu trabaja por su lado.' : 'Estado: ' + NUBE.estado + '.';
-    if (on && NUBE.ses && NUBE.estado === 'en vivo') t += ' Todos los celus conectados al mismo conteo se ven en el momento.';
+    if (on && NUBE.ses && NUBE.estado === '') t += ' Todos los celus conectados al mismo conteo se ven en el momento.';
     $('nEstado').textContent = t;
     var s = NUBE.remota, op = $('nOpc'); op.innerHTML = '';
     if (on && s && s.id !== NUBE.ses && (S || s.pc)) {
