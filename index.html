@@ -112,6 +112,12 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .fila .d.cero { color: var(--bad); }
 .visto { font-size: 11px; color: var(--good); opacity: .85; font-variant-numeric: tabular-nums; }
 .fila .visto { margin-top: 1px; }
+.sin { align-self: flex-start; appearance: none; border: 1.5px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.sin[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.resumen { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
+.resumen b { font-variant-numeric: tabular-nums; }
+.resumen .tit { font-weight: 700; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+#scan .scan-acc .btn.luz[aria-pressed="true"] { background: #f2c94c; color: #222; border-color: #f2c94c; }
 .nota { color: var(--muted); font-size: 14px; padding: 8px 2px; }
 .vacio { text-align: center; color: var(--muted); padding: 28px 12px; background: var(--panel); border: 1px dashed var(--line); border-radius: 14px; }
 .vacio b { display: block; color: var(--ink); font-size: 17px; margin-bottom: 6px; }
@@ -201,6 +207,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <button class="btn icono" id="btnScan" type="button" aria-label="Escanear código de barras" title="Escanear código de barras" hidden><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1.2-2h5.6L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg></button>
     </div>
 
+    <button class="sin" id="btnSin" type="button" aria-pressed="false" title="Mostrar solo los libros que todavía no se contaron">Sin contar</button>
     <div id="chipEdi" class="chip" hidden><span id="chipTxt"></span><button id="chipX" type="button" aria-label="Quitar filtro de editorial">×</button></div>
 
     <div id="ficha" class="ficha" hidden>
@@ -223,6 +230,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
   </section>
 
   <section id="vistaMov" class="wrap" style="gap:12px" hidden>
+    <div id="movResumen" class="resumen" hidden></div>
     <div id="movLista"></div>
     <div class="acciones" id="movAcciones" hidden>
       <button class="btn pri" id="cSumas" type="button">Copiar sumas</button>
@@ -273,7 +281,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
   <div class="barra2">
     <div class="modos"><button type="button" id="mCons" aria-pressed="true">Consultar</button><button type="button" id="mCont" aria-pressed="false">Contar</button></div>
     <div class="scan-txt" id="scanTxt" aria-live="polite"></div>
-    <div class="scan-acc"><button class="btn" id="scanCerrar" type="button">Cerrar</button><button class="btn" id="scanMenos" type="button" hidden>−1 último</button><button class="btn pri" id="scanFin" type="button" hidden>Terminar</button></div>
+    <div class="scan-acc"><button class="btn" id="scanCerrar" type="button">Cerrar</button><button class="btn luz" id="scanLuz" type="button" aria-pressed="false" hidden>Luz</button><button class="btn" id="scanMenos" type="button" hidden>−1 último</button><button class="btn pri" id="scanFin" type="button" hidden>Terminar</button></div>
   </div>
 </div>
 <div id="revPanel" class="panel" hidden>
@@ -494,11 +502,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       return k == null ? [] : [k];
     }
     var qn = norm(q);
-    if (!qn && !FILTRO_EDI) return [];
+    if (!qn && !FILTRO_EDI && !SOLO_SIN) return [];
     var pats = qn ? qn.split(' ').map(function (w) { return new RegExp('(^|[^a-z0-9])' + esc(w)); }) : [];
     var out = [];
     for (var i = 0; i < S.hay.length; i++) {
       if (FILTRO_EDI && S.ediN[i] !== FILTRO_EDI) continue;
+      if (SOLO_SIN && VISTO[S.cod[i]]) continue;
       var h = S.hay[i], ok = true;
       for (var j = 0; j < pats.length; j++) if (!pats[j].test(h)) { ok = false; break; }
       if (ok) out.push(i);
@@ -506,6 +515,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     out.sort(function (a, b) { return S.titN[a] < S.titN[b] ? -1 : S.titN[a] > S.titN[b] ? 1 : a - b; });      // de la A a la Z
     return out;
   }
+  var SOLO_SIN = false;      // filtro: solo libros que todavía no tienen el ✓ de contado
   var VISTO = {};
   function armarVisto() {
     VISTO = {};
@@ -525,9 +535,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('borrarQ').hidden = !q;
     $('chipEdi').hidden = !FILTRO_EDI;
     if (FILTRO_EDI) $('chipTxt').textContent = 'Editorial: ' + FILTRO_NOM;
-    if (!S || (!q && !FILTRO_EDI)) { res = []; if (sel < 0) pintarVacio(); else $('resultados').innerHTML = ''; return; }
+    if (!S || (!q && !FILTRO_EDI && !SOLO_SIN)) { res = []; if (sel < 0) pintarVacio(); else $('resultados').innerHTML = ''; return; }
     res = buscar(q);
-    var clavePag = q + '|' + FILTRO_EDI;
+    var clavePag = q + '|' + FILTRO_EDI + '|' + SOLO_SIN;
     if (clavePag !== PAG_ULT) { PAG = 0; PAG_ULT = clavePag; }          // otra búsqueda: vuelve a la página 1
     var paginas = Math.max(1, Math.ceil(res.length / TAM));
     if (PAG >= paginas) PAG = paginas - 1;
@@ -535,7 +545,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!res.length) {
       var d = document.createElement('div'); d.className = 'vacio';
       var b = document.createElement('b'); b.textContent = 'Sin resultado';
-      var p = document.createElement('span'); p.textContent = FILTRO_EDI ? 'Sin resultados' : 'Probá con menos palabras o con el ISBN.';
+      var p = document.createElement('span'); p.textContent = SOLO_SIN ? 'No queda nada sin contar con este filtro.' : FILTRO_EDI ? 'Sin resultados' : 'Probá con menos palabras o con el ISBN.';
       d.appendChild(b); d.appendChild(p); r.appendChild(d); return;
     }
     var caja = document.createElement('div'); caja.className = 'lista'; caja.setAttribute('role', 'listbox');
@@ -634,6 +644,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function confirmar() {
     if (sel < 0) return;
     var m = registrar(sel, pend);
+    try { if (navigator.vibrate) navigator.vibrate(35); } catch (e) {}
     toast(pend ? '✓ Dep 1: ' + m.antes + ' → ' + m.ahora : '✓ Contado: Dep 1 ' + m.antes);
     pend = 0; pintarFicha(); pintarResultados(); contar();
   }
@@ -650,7 +661,30 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     Object.keys(m).forEach(function (c) { if (m[c] > 0) sumas.push(c + '\t' + m[c]); else if (m[c] < 0) restas.push(c + '\t' + (-m[c])); });
     return { sumas: sumas, restas: restas };
   }
+  function pintarResumen() {
+    var r = $('movResumen'); armarVisto();
+    var cods = Object.keys(VISTO);
+    if (!S || !cods.length) { r.hidden = true; return; }
+    var neto_ = {}, mas = 0, menos = 0;
+    visibles().forEach(function (m) {
+      if (m.quien === 'PC' || String(m.id).indexOf('pc-') === 0) return;
+      neto_[m.cod] = (neto_[m.cod] || 0) + (m.delta || 0);
+      if (m.delta > 0) mas += m.delta; else if (m.delta < 0) menos -= m.delta;
+    });
+    var dif = Object.keys(neto_).filter(function (c) { return neto_[c] !== 0; }).length;
+    var l = [['Contados', '<b>' + cods.length.toLocaleString('es-AR') + '</b> de ' + S.pos.length.toLocaleString('es-AR') + ' libros'],
+             ['Con diferencia', '<b>' + dif + '</b> · coinciden <b>' + (cods.length - dif) + '</b>'],
+             ['Ejemplares', '<b>+' + mas + '</b> sumados · <b>−' + menos + '</b> restados']];
+    if (FILTRO_EDI) {
+      var tot = 0, hechos = 0;
+      for (var i = 0; i < S.ediN.length; i++) if (S.ediN[i] === FILTRO_EDI) { tot++; if (VISTO[S.cod[i]]) hechos++; }
+      l.unshift(['Editorial ' + FILTRO_NOM, '<b>' + hechos + '</b> de ' + tot + ' contados']);
+    }
+    r.innerHTML = '<div class="tit">Resumen del conteo</div>' + l.map(function (x) { return '<div>' + x[0] + ': ' + x[1] + '</div>'; }).join('');
+    r.hidden = false;
+  }
   function pintarMov() {
+    pintarResumen();
     var cont = $('movLista'); cont.innerHTML = '';
     var vis = visibles();
     $('movAcciones').hidden = !MOV.length;
@@ -1019,7 +1053,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function cerrarScan() {
     clearInterval(scanTimer); scanTimer = null;
     if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; }
-    $('scan').hidden = true;
+    $('scan').hidden = true; $('scanLuz').hidden = true; $('scanLuz').setAttribute('aria-pressed', 'false');
   }
   function procesarCodigo(cod) {
     if (!S) return;
@@ -1032,12 +1066,23 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     guardarConteo(); pitar(true);
     textoScan(S.tit[k] + ' · contados ' + CONTEO[c].n + ' (sistema ' + S.d1[k] + ')');
   }
+  function prepararLuz(s) {
+    var b = $('scanLuz'); b.hidden = true; b.setAttribute('aria-pressed', 'false');
+    try { var t = s.getVideoTracks()[0], caps = t.getCapabilities ? t.getCapabilities() : {}; if (caps.torch) b.hidden = false; } catch (e) {}
+  }
+  $('scanLuz').addEventListener('click', function () {
+    var on = this.getAttribute('aria-pressed') !== 'true', b = this;
+    try {
+      scanStream.getVideoTracks()[0].applyConstraints({ advanced: [{ torch: on }] })
+        .then(function () { b.setAttribute('aria-pressed', on); }, function () { toast('Este celu no deja prender la luz'); });
+    } catch (e) { toast('Este celu no deja prender la luz'); }
+  });
   function abrirScan() {
     if (!S) { toast('Primero cargá el stock'); return; }
     var det;
     try { det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'code_128'] }); } catch (e) { toast('Este navegador no puede leer códigos'); return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function (s) {
-      scanStream = s; var v = $('video'); v.srcObject = s; $('scan').hidden = false; v.play();
+      scanStream = s; var v = $('video'); prepararLuz(s); v.srcObject = s; $('scan').hidden = false; v.play();
       ULT = ''; TULT = 0; setModo(MODO);
       scanTimer = setInterval(function () {
         det.detect(v).then(function (r) {
@@ -1062,6 +1107,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('revPanel').hidden = false; pintarRev();
   }
   function cerrarRev() { $('revPanel').hidden = true; }
+  function cantRev(o, k) { return o.ed != null ? o.ed : S.d1[k]; }          // lo que se va a dejar: lo que escribiste, o si no, lo mismo que dice el sistema
   function pintarRev() {
     var l = $('revLista'); l.innerHTML = '';
     ORDEN.forEach(function (c) {
@@ -1070,16 +1116,16 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       var t = document.createElement('div'); t.className = 'txt';
       var a = document.createElement('div'); a.className = 't'; a.textContent = o.tit;
       var m = document.createElement('div'); m.className = 'm'; t.appendChild(a); t.appendChild(m);
-      var i = document.createElement('input'); i.type = 'number'; i.inputMode = 'numeric'; i.min = '0'; i.value = String(o.n); i.setAttribute('aria-label', 'Contados de ' + o.tit);
+      var i = document.createElement('input'); i.type = 'number'; i.inputMode = 'numeric'; i.min = '0'; i.value = k == null ? '' : String(cantRev(o, k)); i.setAttribute('aria-label', 'Contados de ' + o.tit);
       var d = document.createElement('div'); d.className = 'dif';
       var x = document.createElement('button'); x.type = 'button'; x.className = 'btn chico'; x.textContent = '×'; x.setAttribute('aria-label', 'Sacar del conteo');
       function ver() {
-        var sis = k == null ? null : S.d1[k], dif = sis == null ? 0 : o.n - sis;
-        m.textContent = k == null ? 'ya no está en tu stock' : 'Sistema: ' + sis + (dif ? '' : ' · coincide');
+        var sis = k == null ? null : S.d1[k], dif = sis == null ? 0 : cantRev(o, k) - sis;
+        m.textContent = k == null ? 'ya no está en tu stock' : 'Sistema: ' + sis + (dif ? '' : ' · coincide') + ' · escaneado ×' + o.n;
         d.textContent = k == null ? '' : dif ? (dif > 0 ? '+' : '−') + Math.abs(dif) : '✓';
         d.className = 'dif ' + (dif > 0 ? 'mas' : dif < 0 ? 'menos' : '');
       }
-      i.addEventListener('input', function () { var v = parseInt(i.value, 10); if (!isNaN(v) && v >= 0) { o.n = Math.min(v, 99999); guardarConteo(); ver(); resumenRev(); } });
+      i.addEventListener('input', function () { var v = parseInt(i.value, 10); if (!isNaN(v) && v >= 0) { o.ed = Math.min(v, 99999); guardarConteo(); ver(); resumenRev(); } });
       x.addEventListener('click', function () { delete CONTEO[c]; ORDEN = ORDEN.filter(function (y) { return y !== c; }); guardarConteo(); if (!ORDEN.length) cerrarRev(); else pintarRev(); });
       ver(); f.appendChild(t); f.appendChild(i); f.appendChild(d); f.appendChild(x); l.appendChild(f);
     });
@@ -1087,8 +1133,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function resumenRev() {
     var con = 0, sin = 0;
-    ORDEN.forEach(function (c) { var k = libroPorCod(c); if (k == null) return; if (CONTEO[c].n !== S.d1[k]) con++; else sin++; });
-    $('revNota').textContent = con + ' con diferencia · ' + sin + ' coinciden. Al aplicar, el stock queda con lo contado. Ojo: si hay ejemplares en otro lugar que no contaste, corregí la cantidad antes.';
+    ORDEN.forEach(function (c) { var k = libroPorCod(c); if (k == null) return; if (cantRev(CONTEO[c], k) !== S.d1[k]) con++; else sin++; });
+    $('revNota').textContent = con + ' con diferencia · ' + sin + ' coinciden. Los que coinciden no se tocan (solo quedan marcados como contados). Si la cantidad real es otra, escribila antes de aplicar.';
     $('revAplicar').textContent = 'Aplicar al stock (' + (con + sin) + ')';
   }
   var confRev = false;
@@ -1099,7 +1145,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var cambios = 0, iguales = 0;
     ORDEN.slice().forEach(function (c) {
       var k = libroPorCod(c); if (k == null) return;
-      var delta = CONTEO[c].n - S.d1[k];
+      var delta = cantRev(CONTEO[c], k) - S.d1[k];
       registrar(k, delta); if (delta) cambios++; else iguales++;
     });
     CONTEO = {}; ORDEN = []; ULTLIB = null; guardarConteo(); cerrarRev();
@@ -1146,6 +1192,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     try { r.start(); REC = r; $('btnMic').classList.add('oyendo'); $('btnMic').setAttribute('aria-pressed', 'true'); } catch (e) { REC = null; }
   }
   if (SR) { $('btnMic').hidden = false; $('btnMic').addEventListener('click', dictar); }
+  $('btnSin').addEventListener('click', function () {
+    if (!S) { toast('Primero cargá el stock'); return; }
+    SOLO_SIN = !SOLO_SIN; this.setAttribute('aria-pressed', SOLO_SIN); nuevaBusqueda();
+  });
   $('btnEdi').addEventListener('click', abrirEdi);
   $('chipX').addEventListener('click', function () { FILTRO_EDI = ''; FILTRO_NOM = ''; nuevaBusqueda(); });
   $('ediCerrar').addEventListener('click', cerrarEdi);
@@ -1228,7 +1278,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!$('ediPanel').hidden) { cerrarEdi(); return true; }
     if ($('vistaBuscar').hidden) { pestana('buscar'); return true; }
     if (sel >= 0 && res.length !== 1) { sel = -1; pend = 0; pintarFicha(); pintarResultados(); return true; }   // con un solo resultado, la ficha sale sola: se limpia la búsqueda
-    if ($('q').value || FILTRO_EDI || sel >= 0) { $('q').value = ''; FILTRO_EDI = ''; FILTRO_NOM = ''; nuevaBusqueda(); return true; }
+    if ($('q').value || FILTRO_EDI || SOLO_SIN || sel >= 0) { $('q').value = ''; FILTRO_EDI = ''; FILTRO_NOM = ''; SOLO_SIN = false; $('btnSin').setAttribute('aria-pressed', 'false'); nuevaBusqueda(); return true; }
     return false;
   }
   try {
