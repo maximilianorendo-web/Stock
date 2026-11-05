@@ -867,12 +867,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       .then(function (r) {
         if (!r.ok) throw new Error('http ' + r.status);
         faltan.forEach(function (m) { m.subido = true; });
-        guardarMov(); estadoNube('Ok');
+        guardarMov(); estadoNube('en vivo');
       })
       .catch(function () { estadoNube('sin conexión'); })
       .then(function () {
         subiendo = false;
-        if (NUBE.estado === 'Ok' && MOV.some(function (m) { return !m.subido && !m.ajeno; })) setTimeout(subirPendientes, 400);
+        if (NUBE.estado === 'en vivo' && MOV.some(function (m) { return !m.subido && !m.ajeno; })) setTimeout(subirPendientes, 400);
       });
   }
   function bajar() {
@@ -897,7 +897,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var cuantos = nuevos.filter(function (x) { return +x.delta; }).length;
         if (cuantos) toast('☁ ' + cuantos + (cuantos === 1 ? ' cambio' : ' cambios') + (nuevos.every(function (x) { return x.quien === 'PC'; }) ? ' de la PC' : ' de otros'));
       }
-      estadoNube('Ok');
+      estadoNube('en vivo');
     }).catch(function () { estadoNube('sin conexión'); });
   }
   var tb = null;
@@ -921,7 +921,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }).catch(function () { estadoNube('sin conexión'); });
   }
   function iniciarFlujo() {
-    NUBE.listo = true; estadoNube('Ok');
+    NUBE.listo = true; estadoNube('en vivo');
     return bajar().then(function () {
       subirPendientes(); abrirSSE();
       clearInterval(NUBE.poll); NUBE.poll = setInterval(ciclo, 20000);
@@ -996,7 +996,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('nDesc').hidden = !CFG.activo;
     $('nConectar').textContent = CFG.activo ? 'Guardar y reconectar' : 'Conectar';
     var t = !CFG.activo ? 'La nube está apagada: cada celu trabaja por su lado.' : 'Estado: ' + NUBE.estado + '.';
-    if (on && NUBE.ses && NUBE.estado === '') t += ' Todos los celus conectados al mismo conteo se ven en el momento.';
+    if (on && NUBE.ses && NUBE.estado === 'en vivo') t += ' Todos los celus conectados al mismo conteo se ven en el momento.';
     $('nEstado').textContent = t;
     var s = NUBE.remota, op = $('nOpc'); op.innerHTML = '';
     if (on && s && s.id !== NUBE.ses && (S || s.pc)) {
@@ -1066,6 +1066,42 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     guardarConteo(); pitar(true);
     textoScan(S.tit[k] + ' · contados ' + CONTEO[c].n + ' (sistema ' + S.d1[k] + ')');
   }
+  /* Android/Chrome lee códigos solo (BarcodeDetector). iPhone no: ahí se usa la librería zxing.min.js, que se baja la primera vez. */
+  var ZX_CARGA = null;
+  function detectorZxing() {
+    var Z = window.ZXing, hints = new Map();
+    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.EAN_13, Z.BarcodeFormat.EAN_8, Z.BarcodeFormat.UPC_A, Z.BarcodeFormat.CODE_128]);
+    hints.set(Z.DecodeHintType.TRY_HARDER, true);
+    var lector = new Z.MultiFormatReader(); lector.setHints(hints);
+    var cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+    return {
+      detect: function (video) {
+        return new Promise(function (ok) {
+          var w = video.videoWidth, h = video.videoHeight;
+          if (!w || !h) { ok([]); return; }
+          var e = Math.min(1, 960 / w); cv.width = Math.round(w * e); cv.height = Math.round(h * e);
+          cx.drawImage(video, 0, 0, cv.width, cv.height);
+          var im = cx.getImageData(0, 0, cv.width, cv.height).data, n = cv.width * cv.height, lum = new Uint8ClampedArray(n);
+          for (var i = 0, j = 0; i < n; i++, j += 4) lum[i] = (im[j] * 77 + im[j + 1] * 151 + im[j + 2] * 28) >> 8;
+          try {
+            var r = lector.decodeWithState(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.RGBLuminanceSource(lum, cv.width, cv.height))));
+            ok([{ rawValue: r.getText() }]);
+          } catch (err) { ok([]); }
+        });
+      }
+    };
+  }
+  function crearDetector(cb) {
+    if ('BarcodeDetector' in window) {
+      try { cb(new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'code_128'] })); return; } catch (e) {}
+    }
+    if (window.ZXing) { cb(detectorZxing()); return; }
+    toast('Preparando el lector…');
+    if (!ZX_CARGA) ZX_CARGA = new Promise(function (ok, no) {
+      var sc = document.createElement('script'); sc.src = 'zxing.min.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc);
+    });
+    ZX_CARGA.then(function () { cb(detectorZxing()); }, function () { ZX_CARGA = null; cb(null); });
+  }
   function prepararLuz(s) {
     var b = $('scanLuz'); b.hidden = true; b.setAttribute('aria-pressed', 'false');
     try { var t = s.getVideoTracks()[0], caps = t.getCapabilities ? t.getCapabilities() : {}; if (caps.torch) b.hidden = false; } catch (e) {}
@@ -1079,8 +1115,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   });
   function abrirScan() {
     if (!S) { toast('Primero cargá el stock'); return; }
-    var det;
-    try { det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'code_128'] }); } catch (e) { toast('Este navegador no puede leer códigos'); return; }
+    crearDetector(function (det) {
+    if (!det) { toast('Este navegador no puede leer códigos'); return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function (s) {
       scanStream = s; var v = $('video'); prepararLuz(s); v.srcObject = s; $('scan').hidden = false; v.play();
       ULT = ''; TULT = 0; setModo(MODO);
@@ -1093,6 +1129,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         }).catch(function () {});
       }, 250);
     }).catch(function () { toast('No tengo permiso para usar la cámara'); });
+    });
   }
   function menosUltimo() {
     var c = ULTLIB; if (!c || !CONTEO[c]) return;
@@ -1256,7 +1293,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var r = '{"rules":{"stock":{"$clave":{".read":true,".write":true}}}}';
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(r).then(function () { toast('Reglas copiadas'); }, function () { toast('Copialas a mano'); });
   });
-  if ('BarcodeDetector' in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) { $('btnScan').hidden = false; $('btnScan').addEventListener('click', abrirScan); }
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) { $('btnScan').hidden = false; $('btnScan').addEventListener('click', abrirScan); }
   document.addEventListener('keydown', function (e) {                // en la compu: + − Enter sin tocar la pantalla
     var t = e.target && e.target.tagName;
     if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON' || e.ctrlKey || e.altKey || e.metaKey) return;
