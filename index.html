@@ -867,7 +867,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       .then(function (r) {
         if (!r.ok) throw new Error('http ' + r.status);
         faltan.forEach(function (m) { m.subido = true; });
-        guardarMov(); estadoNube('en vivo');
+        guardarMov(); estadoNube('Ok');
       })
       .catch(function () { estadoNube('sin conexión'); })
       .then(function () {
