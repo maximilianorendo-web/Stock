@@ -1002,7 +1002,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var r = resumenConteo();
     b.textContent = msg || (MODO === 'cont' ? 'Leer ISBN' : '');
     if (mal) b.style.color = '#ff8585';
-    sp.textContent = MODO === 'cont' ? (r.t ? 'Contados: ' + r.e + ' ejemplares · ' + r.t + (r.t === 1 ? ' título' : ' títulos') : 'Todavía no contaste nada') : '';
+    sp.textContent = MODO === 'cont' ? (r.t ? 'Contados: ' + r.e + ' ejemplares · ' + r.t + (r.t === 1 ? ' título' : ' títulos') : '') : '';
     el.appendChild(b); el.appendChild(sp);
   }
   function setModo(m) {
