@@ -230,10 +230,10 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
   </section>
 
   <section id="vistaNube" class="wrap" style="gap:12px" hidden>
-    <div class="aviso">Con la nube, todos los celus que cuentan el mismo stock.csv se ven entre sí al instante. Los cambios son sumas y restas, así que no se pisan aunque dos personas toquen el mismo libro.</div>
+    <div class="aviso">Stock</div>
     <label class="campoc">Dirección de la base (Firebase)<input id="nUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://tu-proyecto-default-rtdb.firebaseio.com"></label>
-    <label class="campoc">Clave secreta del conteo<input id="nClave" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="una palabra larga que sepan solo ustedes"></label>
-    <label class="campoc">Tu nombre (aparece en los movimientos)<input id="nNombre" type="text" autocomplete="off" placeholder="Maxi"></label>
+    <label class="campoc">Clave<input id="nClave" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="una palabra larga que sepan solo ustedes"></label>
+    <label class="campoc">Nombre<input id="nNombre" type="text" autocomplete="off" placeholder="Maxi"></label>
     <div class="acciones">
       <button class="btn pri" id="nConectar" type="button">Conectar</button>
       <button class="btn" id="nDesc" type="button" hidden>Desconectar</button>
@@ -244,11 +244,11 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <details class="como">
       <summary>Cómo preparar Firebase (una sola vez)</summary>
       <ol>
-        <li>Entrá a console.firebase.google.com con tu cuenta de Google y creá un proyecto (sin Analytics).</li>
-        <li>En el menú: Compilación → Realtime Database → Crear base de datos. Elegí el modo bloqueado.</li>
-        <li>Pestaña “Reglas”: pegá las reglas de abajo y publicá.</li>
-        <li>Copiá la dirección que aparece arriba de los datos (empieza con https://) y pegala acá.</li>
-        <li>Inventá una clave larga y usá la misma en todos los celus. Quien tenga la dirección y la clave puede leer y escribir.</li>
+        <li>Entrá a console.firebase.google.com con la cuenta de Google y creá un proyecto (sin Analytics).</li>
+        <li>En el menú: Compilación → Realtime Database → Crear base de datos. Elegir el modo bloqueado.</li>
+        <li>Pestaña “Reglas”: pegar las reglas de abajo y publicar.</li>
+        <li>Copiar la dirección que aparece arriba de los datos (empieza con https://) y pegala acá.</li>
+        <li>Escribir una clave.</li>
       </ol>
       <pre>{"rules":{"stock":{"$clave":{".read":true,".write":true}}}}</pre>
       <button class="btn chico" id="nReglas" type="button">Copiar reglas</button>
@@ -477,8 +477,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     r.innerHTML = '';
     var d = document.createElement('div'); d.className = 'vacio';
     var b = document.createElement('b'); var p = document.createElement('span');
-    if (!S) { b.textContent = 'Cargá tu stock.csv'; p.textContent = 'Tocá “Cargar stock.csv” y elegí el archivo que exporta Ultra. Queda guardado en el celular.'; }
-    else { b.textContent = 'Buscá un libro'; p.textContent = 'Escribí parte del título, el autor o el ISBN. Por ejemplo: sociedad del cansancio.'; }
+    if (!S) { b.textContent = 'Cargar Stock.csv'; p.textContent = '“Cargar stock.csv”'; }
+    else { b.textContent = 'Buscar'; p.textContent = 'Resultados'; }
     d.appendChild(b); d.appendChild(p); r.appendChild(d);
   }
   function buscar(q) {
@@ -529,8 +529,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var r = $('resultados'); r.innerHTML = '';
     if (!res.length) {
       var d = document.createElement('div'); d.className = 'vacio';
-      var b = document.createElement('b'); b.textContent = 'No encontré ese libro';
-      var p = document.createElement('span'); p.textContent = FILTRO_EDI ? 'Probá con menos palabras o sacá el filtro de editorial.' : 'Probá con menos palabras o con el ISBN.';
+      var b = document.createElement('b'); b.textContent = 'Sin resultado';
+      var p = document.createElement('span'); p.textContent = FILTRO_EDI ? 'Sin resultados' : 'Probá con menos palabras o con el ISBN.';
       d.appendChild(b); d.appendChild(p); r.appendChild(d); return;
     }
     var caja = document.createElement('div'); caja.className = 'lista'; caja.setAttribute('role', 'listbox');
@@ -1000,7 +1000,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var el = $('scanTxt'); el.innerHTML = '';
     var b = document.createElement('b'), sp = document.createElement('span');
     var r = resumenConteo();
-    b.textContent = msg || (MODO === 'cont' ? 'Apuntá a cada libro: suena y se cuenta' : 'Apuntá al código de barras del libro');
+    b.textContent = msg || (MODO === 'cont' ? 'Leer ISBN' : '');
     if (mal) b.style.color = '#ff8585';
     sp.textContent = MODO === 'cont' ? (r.t ? 'Contados: ' + r.e + ' ejemplares · ' + r.t + (r.t === 1 ? ' título' : ' títulos') : 'Todavía no contaste nada') : '';
     el.appendChild(b); el.appendChild(sp);
