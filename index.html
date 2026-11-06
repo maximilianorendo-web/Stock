@@ -138,6 +138,14 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 #scan video { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
 #scan .barra { padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); color: #fff; display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #111; }
 
+.mfil { display: flex; flex-direction: column; gap: 8px; }
+.mfil .seg { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--press); border-radius: 12px; padding: 3px; gap: 3px; }
+.mfil .seg button { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; min-height: 36px; border-radius: 9px; cursor: pointer; }
+.mfil .seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.mfil .fila2 { display: flex; gap: 8px; }
+.mfil input, .mfil select { flex: 1; min-width: 0; font: inherit; font-size: 15px; min-height: 40px; padding: 0 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); }
+.mfil select { flex: 0 0 38%; }
+.mfil .cuenta { font-size: 13px; color: var(--muted); }
 .chip { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 4px 4px 4px 14px; font-weight: 600; max-width: 100%; }
 .chip span { overflow-wrap: anywhere; }
 .chip button { appearance: none; border: 0; background: transparent; color: inherit; font-size: 22px; width: 36px; height: 36px; cursor: pointer; }
@@ -231,6 +239,19 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 
   <section id="vistaMov" class="wrap" style="gap:12px" hidden>
     <div id="movResumen" class="resumen" hidden></div>
+    <div class="mfil" id="movFiltros" hidden>
+      <div class="seg" id="mfTipo">
+        <button type="button" data-t="todos" aria-pressed="true">Todos</button>
+        <button type="button" data-t="mas" aria-pressed="false">Sumas</button>
+        <button type="button" data-t="menos" aria-pressed="false">Restas</button>
+        <button type="button" data-t="ok" aria-pressed="false">Contados</button>
+      </div>
+      <div class="fila2">
+        <input id="mfQ" type="search" placeholder="Título" autocomplete="off" aria-label="Filtrar por título">
+        <select id="mfQuien" aria-label="Filtrar por quién"><option value="">Todos</option></select>
+      </div>
+      <div class="cuenta" id="mfCuenta"></div>
+    </div>
     <div id="movLista"></div>
     <div class="acciones" id="movAcciones" hidden>
       <button class="btn pri" id="cSumas" type="button">Copiar sumas</button>
@@ -683,20 +704,48 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     r.innerHTML = '<div class="tit">Resumen del conteo</div>' + l.map(function (x) { return '<div>' + x[0] + ': ' + x[1] + '</div>'; }).join('');
     r.hidden = false;
   }
+  var MFIL = { tipo: 'todos', quien: '', q: '', max: 100 };
+  function filtrarMov(vis) {
+    var q = norm(MFIL.q);
+    return vis.filter(function (m) {
+      if (MFIL.tipo === 'mas' && !(m.delta > 0)) return false;
+      if (MFIL.tipo === 'menos' && !(m.delta < 0)) return false;
+      if (MFIL.tipo === 'ok' && m.delta) return false;
+      if (MFIL.quien && (m.quien || '') !== MFIL.quien) return false;
+      if (q && norm(m.tit || '').indexOf(q) < 0) return false;
+      return true;
+    });
+  }
+  function pintarFiltrosMov(todos, filtrados) {
+    var f = $('movFiltros'); f.hidden = todos.length < 2;
+    var sel = $('mfQuien'), nombres = {};
+    todos.forEach(function (m) { if (m.quien) nombres[m.quien] = 1; });
+    var lista = Object.keys(nombres).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+    if (sel.options.length !== lista.length + 1) {
+      sel.innerHTML = ''; var o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Todos'; sel.appendChild(o0);
+      lista.forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+    }
+    sel.value = MFIL.quien;
+    Array.prototype.forEach.call($('mfTipo').children, function (b) { b.setAttribute('aria-pressed', b.dataset.t === MFIL.tipo); });
+    var hay = MFIL.tipo !== 'todos' || MFIL.quien || MFIL.q;
+    $('mfCuenta').textContent = hay ? filtrados.length + ' de ' + todos.length + ' movimientos' : '';
+  }
   function pintarMov() {
     pintarResumen();
     var cont = $('movLista'); cont.innerHTML = '';
-    var vis = visibles();
+    var vis = visibles(), todos = vis;
+    vis = filtrarMov(vis);
+    pintarFiltrosMov(todos, vis);
     $('movAcciones').hidden = !MOV.length;
     $('bCsv').hidden = !!(S && !S.lineas);
     if (!vis.length) {
       var d = document.createElement('div'); d.className = 'vacio';
-      var b = document.createElement('b'); b.textContent = 'Todavía no hay movimientos';
-      var p = document.createElement('span'); p.textContent = 'Cada vez que confirmás con Ok, el cambio queda anotado acá.';
+      var b = document.createElement('b'); b.textContent = todos.length ? 'Ningún movimiento con ese filtro' : 'Todavía no hay movimientos';
+      var p = document.createElement('span'); p.textContent = todos.length ? 'Probá con otro filtro o borrá el título.' : 'Cada vez que confirmás con Ok, el cambio queda anotado acá.';
       d.appendChild(b); d.appendChild(p); cont.appendChild(d);
     } else {
       var caja = document.createElement('div'); caja.className = 'lista';
-      vis.slice().reverse().forEach(function (m) {
+      vis.slice().reverse().slice(0, MFIL.max).forEach(function (m) {
         var r = document.createElement('div'); r.className = 'mov';
         var t = document.createElement('div'); t.className = 'txt';
         var a = document.createElement('div'); a.className = 't'; a.textContent = m.tit;
@@ -712,6 +761,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         r.appendChild(t); r.appendChild(dl); r.appendChild(u); caja.appendChild(r);
       });
       cont.appendChild(caja);
+      if (vis.length > MFIL.max) {
+        var mas = document.createElement('button'); mas.type = 'button'; mas.className = 'btn ancho';
+        mas.textContent = 'Mostrar más (' + (vis.length - MFIL.max) + ' restantes)';
+        mas.addEventListener('click', function () { MFIL.max += 100; pintarMov(); });
+        cont.appendChild(mas);
+      }
     }
     var nt = neto();
     $('cSumas').textContent = 'Copiar sumas (' + nt.sumas.length + ')';
@@ -1229,6 +1284,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     try { r.start(); REC = r; $('btnMic').classList.add('oyendo'); $('btnMic').setAttribute('aria-pressed', 'true'); } catch (e) { REC = null; }
   }
   if (SR) { $('btnMic').hidden = false; $('btnMic').addEventListener('click', dictar); }
+  Array.prototype.forEach.call($('mfTipo').children, function (b) {
+    b.addEventListener('click', function () { MFIL.tipo = b.dataset.t; MFIL.max = 100; pintarMov(); });
+  });
+  $('mfQuien').addEventListener('change', function () { MFIL.quien = this.value; MFIL.max = 100; pintarMov(); });
+  $('mfQ').addEventListener('input', function () {
+    MFIL.q = this.value; MFIL.max = 100; clearTimeout(tmf); tmf = setTimeout(pintarMov, 150);
+  });
+  var tmf;
   $('btnSin').addEventListener('click', function () {
     if (!S) { toast('Primero cargá el stock'); return; }
     SOLO_SIN = !SOLO_SIN; this.setAttribute('aria-pressed', SOLO_SIN); nuevaBusqueda();
