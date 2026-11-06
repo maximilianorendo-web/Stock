@@ -133,6 +133,10 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .aviso { padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 14px; }
 .aviso.mal { background: var(--bad-soft); color: var(--bad); }
 .aviso.bien { background: var(--good-soft); color: var(--good); }
+#msgBox { position: fixed; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 40; background: var(--hdr); color: var(--hdr-ink); border-radius: 14px; padding: 14px 16px; box-shadow: 0 8px 28px rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.25); }
+#msgDe { font-size: 12px; opacity: .7; letter-spacing: .06em; text-transform: uppercase; }
+#msgTxt { font-size: 18px; font-weight: 600; margin: 6px 0 12px; white-space: pre-wrap; word-break: break-word; }
+#msgOk { width: 100%; background: transparent; color: var(--hdr-ink); border-color: rgba(255,255,255,.4); }
 #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--hdr); color: var(--hdr-ink); padding: 12px 18px; border-radius: 12px; font-weight: 600; max-width: calc(100% - 32px); z-index: 20; box-shadow: 0 4px 16px rgba(0,0,0,.3); }
 #scan { position: fixed; inset: 0; background: #000; z-index: 30; display: flex; flex-direction: column; }
 #scan video { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
@@ -291,6 +295,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 </main>
 
 <div id="toast" hidden></div>
+<div id="msgBox" hidden><div id="msgDe">MR System</div><div id="msgTxt"></div><button class="btn" id="msgOk" type="button">OK</button></div>
 <div id="ediPanel" class="panel" hidden>
   <div class="panel-in">
     <div class="buscador"><input id="ediQ" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Buscar editorial" aria-label="Buscar editorial"><button class="btn" id="ediCerrar" type="button">Cerrar</button></div>
@@ -955,6 +960,47 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       estadoNube('en vivo');
     }).catch(function () { estadoNube('sin conexión'); });
   }
+  /* ---------- mensajes de la PC ---------- */
+  var MSGV = {}, MSGQ = [], MSGINI = false;
+  try { MSGV = JSON.parse(localStorage.getItem('msgVistos') || '{}') || {}; MSGINI = localStorage.getItem('msgIni') === '1'; } catch (e) {}
+  function normNombre(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean).join(' '); }
+  function guardarMsgV() { try { localStorage.setItem('msgVistos', JSON.stringify(MSGV)); localStorage.setItem('msgIni', '1'); } catch (e) {} }
+  function mostrarMsg() {
+    var b = $('msgBox');
+    if (!MSGQ.length) { b.hidden = true; return; }
+    var m = MSGQ[0];
+    $('msgTxt').textContent = m.texto;
+    $('msgDe').textContent = 'MR System' + (m.para ? ' · para ' + (m.paraNombre || m.para) : '');
+    if (b.hidden) {
+      b.hidden = false;
+      try { if (navigator.vibrate) navigator.vibrate([250, 120, 250]); } catch (e) {}
+      try {
+        var a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain();
+        o.frequency.value = 880; g.gain.value = 0.15; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + 0.18);
+      } catch (e) {}
+    }
+  }
+  $('msgOk').addEventListener('click', function () { MSGQ.shift(); $('msgBox').hidden = true; mostrarMsg(); });
+  function bajarMsgs() {
+    if (!nubeOn()) return Promise.resolve();
+    return fetch(nubeBase() + '/msgs.json').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }).then(function (d) {
+      d = d || {};
+      var ids = Object.keys(d).sort(function (a, b) { return (d[a].t || 0) - (d[b].t || 0); });
+      var yo = normNombre(CFG.nombre);
+      ids.forEach(function (id) {
+        if (MSGV[id]) return;
+        MSGV[id] = 1;
+        var m = d[id] || {};
+        if (!MSGINI) return;                        // la primera vez no se muestran los viejos
+        if (m.para && m.para !== yo) return;
+        if (m.texto) MSGQ.push(m);
+      });
+      MSGINI = true; guardarMsgV(); mostrarMsg();
+    }).catch(function () {});
+  }
+  setInterval(bajarMsgs, 12000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) bajarMsgs(); });
+  setTimeout(bajarMsgs, 2500);
   var tb = null;
   function disparar() { clearTimeout(tb); tb = setTimeout(bajar, 150); }
   function abrirSSE() {
