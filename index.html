@@ -986,55 +986,60 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       estadoNube('en vivo');
     }).catch(function () { estadoNube('sin conexión'); });
   }
-  /* ---------- tapa (de la tienda) ---------- */
-  var TIENDA = 'https://radeff.com.ar';          // dirección de la tienda: de ahí se sacan las tapas
-  var TAPAS = {}, tapaSel = -1;
+  /* ---------- tapa: las direcciones de las fotos las sube MR System a la nube (STOCK → TAPAS) ---------- */
+  var TAPAMAP = null, TAPAPRE = '', TAPAT = 0, tapaSel = -1, tapaCarga = null;
   function codigosTapa(k) {
     var c = [S.cod[k], S.isbn && S.isbn[k]], out = [];
-    c.slice().forEach(function (v) {
+    c.forEach(function (v) {
       v = String(v || '').trim(); if (!v) return;
       [v, v.replace(/^0+/, '')].forEach(function (x) { if (x && out.indexOf(x) < 0) out.push(x); });
     });
     return out;
   }
-  function buscarTapa(cods, i) {
-    if (i >= cods.length) return Promise.resolve(null);
-    return fetch(TIENDA + '/wp-json/wc/store/v1/products?per_page=1&sku=' + encodeURIComponent(cods[i])).then(function (r) {
-      if (!r.ok) { var e = new Error('http ' + r.status); e.http = r.status; throw e; }
-      return r.json();
-    }).then(function (d) {
-      var p = d && d[0], im = p && p.images && p.images[0];
-      if (im && (im.src || im.thumbnail)) return { url: im.src || im.thumbnail, nombre: p.name || '' };
-      if (p) return { sinFoto: true };
-      return buscarTapa(cods, i + 1);
+  function armarTapas(d) {
+    TAPAMAP = {}; TAPAPRE = d.pre || ''; TAPAT = d.t || 0;
+    (d.filas || []).forEach(function (f) {
+      var k = String(f[0]); TAPAMAP[k] = f[1];
+      var z = k.replace(/^0+/, ''); if (z && !(z in TAPAMAP)) TAPAMAP[z] = f[1];
     });
+  }
+  function cargarTapas() {
+    if (tapaCarga) return tapaCarga;
+    tapaCarga = leer('tapas').then(function (cache) {
+      if (cache && cache.filas) armarTapas(cache);
+      if (!nubeOn() || navigator.onLine === false) return;
+      return fetch(nubeBase() + '/tapas/meta.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (meta) {
+        if (!meta || !meta.chunks || (cache && cache.t >= meta.t)) return;
+        $('tapaMsg').textContent = 'Bajando las tapas (' + (meta.n || '') + ')… la primera vez tarda un poco.';
+        var pedidos = [];
+        for (var i = 0; i < meta.chunks; i++) pedidos.push(fetch(nubeBase() + '/tapas/p' + i + '.json').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }));
+        return Promise.all(pedidos).then(function (partes) {
+          var filas = []; partes.forEach(function (p) { filas = filas.concat(p || []); });
+          var d = { t: meta.t, pre: meta.pre || '', filas: filas };
+          armarTapas(d); return guardar('tapas', d);
+        });
+      }).catch(function () {});
+    }).then(function () { tapaCarga = null; }, function () { tapaCarga = null; });
+    return tapaCarga;
   }
   function abrirTapa() {
     if (sel < 0 || !S) return;
-    var k = sel, cod = S.cod[k];
+    var k = sel;
     tapaSel = k;
     $('tapaTit').textContent = S.tit[k];
     var img = $('tapaImg'), msg = $('tapaMsg');
-    img.hidden = true; img.removeAttribute('src'); msg.hidden = false; msg.textContent = 'Buscando en la tienda…';
+    img.hidden = true; img.removeAttribute('src'); msg.hidden = false; msg.textContent = 'Buscando la tapa…';
     $('tapaPanel').hidden = false;
-    var listo = function (r) {
+    cargarTapas().then(function () {
       if (tapaSel !== k) return;
-      if (r && r.url) { msg.hidden = true; img.src = r.url; img.hidden = false; }
-      else if (r && r.sinFoto) msg.textContent = 'El libro está en la tienda, pero sin foto de tapa.';
-      else msg.textContent = 'No encontré este libro en la tienda.';
-    };
-    if (TAPAS[cod] !== undefined) { listo(TAPAS[cod]); return; }
-    buscarTapa(codigosTapa(k), 0).then(function (r) { TAPAS[cod] = r; listo(r); }).catch(function (e) {
-      if (tapaSel !== k) return;
-      if (e && e.http) { msg.textContent = 'La tienda respondió un error (' + e.http + ').'; return; }
-      if (navigator.onLine === false) { msg.textContent = 'No hay internet.'; return; }
-      msg.textContent = 'Revisando por qué falló…';
-      // sin leer la respuesta (no-cors): si llega, la tienda está viva y lo que bloquea es el permiso (CORS)
-      fetch(TIENDA + '/wp-json/', { mode: 'no-cors' }).then(function () {
-        if (tapaSel === k) msg.textContent = 'La tienda responde, pero no deja que esta app lea sus datos (bloqueo CORS). Hay que habilitarlo en la tienda o traer las tapas desde MR System.';
-      }).catch(function () {
-        if (tapaSel === k) msg.textContent = 'No pude llegar a ' + TIENDA.replace(/^https?:\/\//, '') + ' desde este celular. ¿La dirección de la tienda es esa?';
-      });
+      if (!TAPAMAP) { msg.textContent = 'Todavía no hay tapas cargadas. Hay que traerlas desde MR System (STOCK → TAPAS), y este celu tiene que estar conectado a la Nube.'; return; }
+      var cods = codigosTapa(k), suf = null;
+      for (var i = 0; i < cods.length && suf == null; i++) if (cods[i] in TAPAMAP) suf = TAPAMAP[cods[i]];
+      if (suf == null) { msg.textContent = 'Este libro no tiene tapa en la tienda.'; return; }
+      img.onload = function () { if (tapaSel === k) msg.hidden = true; };
+      img.onerror = function () { if (tapaSel === k) { img.hidden = true; msg.hidden = false; msg.textContent = 'No pude cargar la foto (sin internet, o la tienda no la entrega).'; } };
+      msg.textContent = 'Cargando la foto…';
+      img.src = TAPAPRE + suf; img.hidden = false;
     });
   }
   function cerrarTapa() { tapaSel = -1; $('tapaPanel').hidden = true; }
