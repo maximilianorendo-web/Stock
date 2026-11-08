@@ -93,6 +93,8 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .dep .num.cero { color: var(--bad); }
 .dep .nuevo { font-size: 24px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .dep .nuevo.baja { color: var(--bad); }
+.tapa-caja { display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 120px; }
+#tapaImg { max-width: 100%; max-height: 68vh; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.25); background: #fff; }
 .ubic { margin-top: 8px; }
 #fUbic { font-size: 14px; }
 .otros { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -233,7 +235,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
         <span class="rot">Dep 1:</span><button type="button" class="num" id="fDep" aria-label="Tocá para escribir cuántos hay">0</button><input id="fIn" class="num-in" type="number" inputmode="numeric" min="0" max="99999" step="1" aria-label="Cuántos hay" hidden><span class="nuevo" id="fNuevo" hidden></span>
       </div>
       <div class="otros"><span id="fDep11"></span><span id="fPvp"></span><span id="fCod"></span></div>
-      <div class="ubic"><button type="button" class="btn chico" id="fUbic"></button></div>
+      <div class="ubic"><button type="button" class="btn chico" id="fUbic"></button> <button type="button" class="btn chico" id="fTapa">Tapa?</button></div>
       <div class="tres">
         <button type="button" class="menos" id="bMenos" aria-label="Restar uno">−</button>
         <button type="button" class="ok" id="bOk" aria-label="Confirmar el cambio">Ok</button>
@@ -298,6 +300,13 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
   </section>
 </main>
 
+<div id="tapaPanel" class="panel" hidden>
+  <div class="panel-in">
+    <div id="tapaTit" class="aviso"></div>
+    <div id="tapaCaja" class="tapa-caja"><img id="tapaImg" alt="Tapa del libro" referrerpolicy="no-referrer" hidden><div id="tapaMsg" class="nota">Buscando en la tienda…</div></div>
+    <button class="btn" id="tapaCerrar" type="button">Cerrar</button>
+  </div>
+</div>
 <div id="toast" hidden></div>
 <div id="msgBox" hidden><div id="msgDe">MR System</div><div id="msgTxt"></div><button class="btn" id="msgOk" type="button">Sí, señor</button></div>
 <div id="ediPanel" class="panel" hidden>
@@ -412,7 +421,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
               ubi: ix('ubicacion'), d1: ix('dep1'), d11: ix('dep11con', 'dep11'), tot: ix('canttotal'), pvp: ix('pvp'), isbn: ix('isbn'), barra: ix('codbarra') };
     if (c.cod < 0 || c.tit < 0 || c.d1 < 0) throw new Error('El archivo no parece un stock.csv: le faltan las columnas Codigo, TITULO o Dep 1.');
     var P = { nombre: nombre, fecha: fecha, enc: enc, eol: eol, lineas: lineas, c: c, pos: [], cod: [], tit: [], aut: [], edi: [],
-              ubi: [], d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
+              ubi: [], isbn: [], d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
     for (var n = 1; n < lineas.length; n++) {
       var l = lineas[n];
       if (!l.trim()) continue;
@@ -426,6 +435,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       P.aut.push(c.aut >= 0 ? limpio(f[c.aut] || '') : '');
       P.edi.push(c.edi >= 0 ? limpio(f[c.edi] || '') : '');
       P.ubi.push(c.ubi >= 0 ? limpio(f[c.ubi] || '') : '');
+      P.isbn.push(c.isbn >= 0 ? limpio(f[c.isbn] || '') : '');
       P.d1.push(num(f[c.d1]));
       P.d11.push(c.d11 >= 0 ? num(f[c.d11]) : 0);
       P.pvp.push(c.pvp >= 0 ? num(f[c.pvp]) : 0);
@@ -440,13 +450,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function armarNube(filas, nombre, fecha) {
     var P = { nombre: nombre, fecha: fecha, enc: null, eol: '\r\n', lineas: null, c: null, pos: [], cod: [], tit: [], aut: [], edi: [],
-              ubi: [], d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
+              ubi: [], isbn: [], d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
     filas.forEach(function (f, i) {
       if (!f) return;
       var k = P.pos.length, t = String(f[1] == null ? '' : f[1]);
       P.pos.push(i); P.cod.push(String(f[0] == null ? '' : f[0])); P.tit.push(t);
       P.aut.push(String(f[2] == null ? '' : f[2])); P.edi.push(String(f[3] == null ? '' : f[3]));
       P.ubi.push(String(f[9] == null ? '' : f[9]));
+      P.isbn.push(String(f[7] == null ? '' : f[7]));
       P.d1.push(+f[4] || 0); P.d11.push(+f[5] || 0); P.pvp.push(+f[6] || 0);
       P.hay.push(norm(t + ' ' + P.aut[k])); P.ediN.push(norm(P.edi[k])); P.titN.push(norm(t));
       if (P.cod[k] && !P.porCodigo.has(P.cod[k])) P.porCodigo.set(P.cod[k], k);
@@ -631,7 +642,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('fDep11').textContent = 'Dep 11: ' + S.d11[sel];
     $('fPvp').textContent = S.pvp[sel] ? 'PVP ' + pesos(S.pvp[sel]) : '';
     $('fCod').textContent = S.cod[sel];
-    var ub = ubicDe(sel); $('fUbic').textContent = ub ? '📍 ' + ub : '📍';
+    var ub = ubicDe(sel); $('fUbic').textContent = ub ? '📍 ' + ub : '📍 Poner ubicación';
     $('bMenos').disabled = d + pend <= 0;
   }
   function editarCant(ini) {
@@ -975,6 +986,53 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       estadoNube('en vivo');
     }).catch(function () { estadoNube('sin conexión'); });
   }
+  /* ---------- tapa (de la tienda) ---------- */
+  var TIENDA = 'https://radeff.com.ar';          // dirección de la tienda: de ahí se sacan las tapas
+  var TAPAS = {}, tapaSel = -1;
+  function codigosTapa(k) {
+    var c = [S.cod[k], S.isbn && S.isbn[k]], out = [];
+    c.slice().forEach(function (v) {
+      v = String(v || '').trim(); if (!v) return;
+      [v, v.replace(/^0+/, '')].forEach(function (x) { if (x && out.indexOf(x) < 0) out.push(x); });
+    });
+    return out;
+  }
+  function buscarTapa(cods, i) {
+    if (i >= cods.length) return Promise.resolve(null);
+    return fetch(TIENDA + '/wp-json/wc/store/v1/products?per_page=1&sku=' + encodeURIComponent(cods[i])).then(function (r) {
+      if (!r.ok) { var e = new Error('http ' + r.status); e.http = r.status; throw e; }
+      return r.json();
+    }).then(function (d) {
+      var p = d && d[0], im = p && p.images && p.images[0];
+      if (im && (im.src || im.thumbnail)) return { url: im.src || im.thumbnail, nombre: p.name || '' };
+      if (p) return { sinFoto: true };
+      return buscarTapa(cods, i + 1);
+    });
+  }
+  function abrirTapa() {
+    if (sel < 0 || !S) return;
+    var k = sel, cod = S.cod[k];
+    tapaSel = k;
+    $('tapaTit').textContent = S.tit[k];
+    var img = $('tapaImg'), msg = $('tapaMsg');
+    img.hidden = true; img.removeAttribute('src'); msg.hidden = false; msg.textContent = 'Buscando en la tienda…';
+    $('tapaPanel').hidden = false;
+    var listo = function (r) {
+      if (tapaSel !== k) return;
+      if (r && r.url) { msg.hidden = true; img.src = r.url; img.hidden = false; }
+      else if (r && r.sinFoto) msg.textContent = 'El libro está en la tienda, pero sin foto de tapa.';
+      else msg.textContent = 'No encontré este libro en la tienda.';
+    };
+    if (TAPAS[cod] !== undefined) { listo(TAPAS[cod]); return; }
+    buscarTapa(codigosTapa(k), 0).then(function (r) { TAPAS[cod] = r; listo(r); }).catch(function (e) {
+      if (tapaSel !== k) return;
+      msg.textContent = e && e.http ? 'La tienda respondió un error (' + e.http + ').' : 'No pude consultar la tienda: sin internet, o la tienda no permite la consulta desde acá.';
+    });
+  }
+  function cerrarTapa() { tapaSel = -1; $('tapaPanel').hidden = true; }
+  $('fTapa').addEventListener('click', abrirTapa);
+  $('tapaCerrar').addEventListener('click', cerrarTapa);
+
   /* ---------- ubicaciones ---------- */
   var UBIC = {}, UBICPEND = {};       // clave -> {u, t, q}; las que faltan subir
   function ubKey(cod) { return String(cod).replace(/[.$#\[\]\/\s]/g, '_'); }
@@ -1499,12 +1557,13 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     else if (e.key === 'Enter') { confirmar(); e.preventDefault(); }
     else if (e.key === '/') { $('q').focus(); e.preventDefault(); }
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); } });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && NUBE.listo) { bajar(); subirPendientes(); } });
   window.addEventListener('online', function () { if (nubeOn()) { if (NUBE.listo) { bajar(); subirPendientes(); } else conectar(); } });
 
   /* ---------- botón "atrás" del celular: cierra lo último que abriste en vez de salir de la app ---------- */
   function atras() {                       // true si había algo para cerrar
+    if (!$('tapaPanel').hidden) { cerrarTapa(); return true; }
     if (!$('revPanel').hidden) { cerrarRev(); return true; }
     if (!$('scan').hidden) { cerrarScan(); return true; }
     if (!$('ediPanel').hidden) { cerrarEdi(); return true; }
