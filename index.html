@@ -93,6 +93,8 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .dep .num.cero { color: var(--bad); }
 .dep .nuevo { font-size: 24px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .dep .nuevo.baja { color: var(--bad); }
+.ubic { margin-top: 8px; }
+#fUbic { font-size: 14px; }
 .otros { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
 .tres { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 8px; margin-top: 2px; }
 .tres button { appearance: none; border: 0; border-radius: 14px; min-height: 52px; font: inherit; font-size: 26px; font-weight: 800; cursor: pointer; }
@@ -178,6 +180,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 #scan .scan-txt b { display: block; font-size: 16px; overflow-wrap: anywhere; }
 #scan .scan-txt span { color: #aab3c8; font-size: 14px; }
 #scan .scan-acc { display: flex; gap: 8px; }
+#scan .scan-acc #scanMenos, #scan .scan-acc #scanMas { flex: 0 0 56px; font-size: 20px; font-weight: 700; }
 #scan .scan-acc .btn { flex: 1; background: #262b38; color: #fff; border-color: #3a4256; }
 #scan .scan-acc .btn.pri { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .rev { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
@@ -230,6 +233,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
         <span class="rot">Dep 1:</span><button type="button" class="num" id="fDep" aria-label="Tocá para escribir cuántos hay">0</button><input id="fIn" class="num-in" type="number" inputmode="numeric" min="0" max="99999" step="1" aria-label="Cuántos hay" hidden><span class="nuevo" id="fNuevo" hidden></span>
       </div>
       <div class="otros"><span id="fDep11"></span><span id="fPvp"></span><span id="fCod"></span></div>
+      <div class="ubic"><button type="button" class="btn chico" id="fUbic"></button></div>
       <div class="tres">
         <button type="button" class="menos" id="bMenos" aria-label="Restar uno">−</button>
         <button type="button" class="ok" id="bOk" aria-label="Confirmar el cambio">Ok</button>
@@ -295,7 +299,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 </main>
 
 <div id="toast" hidden></div>
-<div id="msgBox" hidden><div id="msgDe">MR System</div><div id="msgTxt"></div><button class="btn" id="msgOk" type="button">OK</button></div>
+<div id="msgBox" hidden><div id="msgDe">MR System</div><div id="msgTxt"></div><button class="btn" id="msgOk" type="button">Sí, señor</button></div>
 <div id="ediPanel" class="panel" hidden>
   <div class="panel-in">
     <div class="buscador"><input id="ediQ" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Buscar editorial" aria-label="Buscar editorial"><button class="btn" id="ediCerrar" type="button">Cerrar</button></div>
@@ -307,7 +311,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
   <div class="barra2">
     <div class="modos"><button type="button" id="mCons" aria-pressed="true">Consultar</button><button type="button" id="mCont" aria-pressed="false">Contar</button></div>
     <div class="scan-txt" id="scanTxt" aria-live="polite"></div>
-    <div class="scan-acc"><button class="btn" id="scanCerrar" type="button">Cerrar</button><button class="btn luz" id="scanLuz" type="button" aria-pressed="false" hidden>Luz</button><button class="btn" id="scanMenos" type="button" hidden>−1 último</button><button class="btn pri" id="scanFin" type="button" hidden>Terminar</button></div>
+    <div class="scan-acc"><button class="btn" id="scanCerrar" type="button">Cerrar</button><button class="btn luz" id="scanLuz" type="button" aria-pressed="false" hidden>Luz</button><button class="btn" id="scanMenos" type="button" hidden aria-label="Restar uno al último">− 1</button><button class="btn" id="scanMas" type="button" hidden aria-label="Sumar uno al último">+ 1</button><button class="btn pri" id="scanFin" type="button" hidden>Terminar</button></div>
   </div>
 </div>
 <div id="revPanel" class="panel" hidden>
@@ -405,10 +409,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       return -1;
     };
     var c = { cod: ix('codigo'), tit: ix('titulo'), aut: ix('autor'), edi: ix('editor', 'editorial'),
-              d1: ix('dep1'), d11: ix('dep11con', 'dep11'), tot: ix('canttotal'), pvp: ix('pvp'), isbn: ix('isbn'), barra: ix('codbarra') };
+              ubi: ix('ubicacion'), d1: ix('dep1'), d11: ix('dep11con', 'dep11'), tot: ix('canttotal'), pvp: ix('pvp'), isbn: ix('isbn'), barra: ix('codbarra') };
     if (c.cod < 0 || c.tit < 0 || c.d1 < 0) throw new Error('El archivo no parece un stock.csv: le faltan las columnas Codigo, TITULO o Dep 1.');
     var P = { nombre: nombre, fecha: fecha, enc: enc, eol: eol, lineas: lineas, c: c, pos: [], cod: [], tit: [], aut: [], edi: [],
-              d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
+              ubi: [], d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
     for (var n = 1; n < lineas.length; n++) {
       var l = lineas[n];
       if (!l.trim()) continue;
@@ -421,6 +425,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       P.tit.push(t);
       P.aut.push(c.aut >= 0 ? limpio(f[c.aut] || '') : '');
       P.edi.push(c.edi >= 0 ? limpio(f[c.edi] || '') : '');
+      P.ubi.push(c.ubi >= 0 ? limpio(f[c.ubi] || '') : '');
       P.d1.push(num(f[c.d1]));
       P.d11.push(c.d11 >= 0 ? num(f[c.d11]) : 0);
       P.pvp.push(c.pvp >= 0 ? num(f[c.pvp]) : 0);
@@ -435,12 +440,13 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function armarNube(filas, nombre, fecha) {
     var P = { nombre: nombre, fecha: fecha, enc: null, eol: '\r\n', lineas: null, c: null, pos: [], cod: [], tit: [], aut: [], edi: [],
-              d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
+              ubi: [], d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
     filas.forEach(function (f, i) {
       if (!f) return;
       var k = P.pos.length, t = String(f[1] == null ? '' : f[1]);
       P.pos.push(i); P.cod.push(String(f[0] == null ? '' : f[0])); P.tit.push(t);
       P.aut.push(String(f[2] == null ? '' : f[2])); P.edi.push(String(f[3] == null ? '' : f[3]));
+      P.ubi.push(String(f[9] == null ? '' : f[9]));
       P.d1.push(+f[4] || 0); P.d11.push(+f[5] || 0); P.pvp.push(+f[6] || 0);
       P.hay.push(norm(t + ' ' + P.aut[k])); P.ediN.push(norm(P.edi[k])); P.titN.push(norm(t));
       if (P.cod[k] && !P.porCodigo.has(P.cod[k])) P.porCodigo.set(P.cod[k], k);
@@ -457,7 +463,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
 
   /* ---------- guardado en el celular (IndexedDB) ---------- */
-  var dbp = null;
+  var dbp = null, ERRCARGA = '', AUTOREC = false;
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}     // que Android no borre los datos solo
   function db() {
     if (dbp) return dbp;
     dbp = new Promise(function (ok, no) {
@@ -484,9 +491,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var q = d.transaction('kv').objectStore('kv').get(k);
         q.onsuccess = function () { ok(q.result); }; q.onerror = function () { no(q.error); };
       });
-    }).catch(function () { return undefined; });
+    }).catch(function () { ERRCARGA = ERRCARGA || 'No pude leer lo guardado en este celular.'; return undefined; });
   }
-  function guardarMov() { return guardar('mov', { movs: MOV, over: OVER, apl: APL, ses: NUBE.ses }); }
+  function guardarMov() { var r = guardar('mov', { movs: MOV, over: OVER, apl: APL, ses: NUBE.ses }); try { estado(); } catch (e) {} return r; }
 
   /* ---------- pantalla ---------- */
   function toast(t) {
@@ -495,7 +502,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function estado() {
     var e = $('estado');
-    var nube = CFG.activo ? ' · ☁ ' + NUBE.estado : '';
+    var sub = MOV.filter(function (m) { return !m.subido && !m.ajeno; }).length;
+    var nube = CFG.activo ? ' · ☁ ' + NUBE.estado + (sub ? ' · ⏳ ' + sub + ' sin subir' : '') : '';
     if (!S) { e.textContent = 'Sin stock cargado' + nube; $('btnCargar').textContent = 'Cargar stock.csv'; return; }
     e.innerHTML = '<b></b><br><span></span>';
     e.querySelector('b').textContent = S.nombre;
@@ -516,7 +524,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     r.innerHTML = '';
     var d = document.createElement('div'); d.className = 'vacio';
     var b = document.createElement('b'); var p = document.createElement('span');
-    if (!S) { b.textContent = 'Cargar Stock.csv'; p.textContent = '“Cargar stock.csv”'; }
+    if (!S) { b.textContent = 'Cargar Stock.csv'; p.textContent = ERRCARGA || '“Cargar stock.csv”'; if (ERRCARGA) b.textContent = 'Hay un problema'; }
     else { b.textContent = 'Buscar'; p.textContent = 'Resultados'; }
     d.appendChild(b); d.appendChild(p); r.appendChild(d);
   }
@@ -623,6 +631,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('fDep11').textContent = 'Dep 11: ' + S.d11[sel];
     $('fPvp').textContent = S.pvp[sel] ? 'PVP ' + pesos(S.pvp[sel]) : '';
     $('fCod').textContent = S.cod[sel];
+    var ub = ubicDe(sel); $('fUbic').textContent = ub ? '📍 ' + ub : '📍 Poner ubicación';
     $('bMenos').disabled = d + pend <= 0;
   }
   function editarCant(ini) {
@@ -878,12 +887,18 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   /* ---------- carga de archivo ---------- */
   function reiniciarBase() {
     S = CSVTXT.nube ? armarNube(CSVTXT.filas, CSVTXT.nombre, CSVTXT.fecha) : armar(CSVTXT.texto, CSVTXT.enc, CSVTXT.nombre, CSVTXT.fecha);
-    OVER = {}; MOV = []; APL = {}; NUBE.ses = ''; EDIS = null; sel = -1; pend = 0;
+    OVER = {}; MOV = []; APL = {}; NUBE.ses = ''; EDIS = null; sel = -1; pend = 0; UBIC = {}; UBICPEND = {};
     CONTEO = {}; ORDEN = []; ULTLIB = null; guardarConteo();
     guardarMov(); contar(); pintarFicha(); pintarResultados();
   }
   function cargarArchivo(file) {
     if (!file) return;
+    var hechos = MOV.length, contados = Object.keys(CONTEO || {}).length;
+    if ((S && (hechos || contados)) || (!S && ERRCARGA)) {
+      var tx = !S ? 'Hay datos guardados que no se pudieron abrir y cargar otro stock.csv los borra.'
+        : 'Este celu ya tiene trabajo (' + hechos + ' movimientos, ' + contados + ' libros contados) y cargar otro stock.csv lo borra.\n\nSi usan la Nube, mejor no: reconectá desde la pestaña Nube.';
+      if (!confirm(tx + '\n\n¿Cargarlo igual?')) return;
+    }
     $('estado').textContent = 'Leyendo ' + file.name + '…';
     file.arrayBuffer().then(function (buf) {
       return new Promise(function (ok) { setTimeout(function () { ok(buf); }, 30); });
@@ -960,6 +975,58 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       estadoNube('en vivo');
     }).catch(function () { estadoNube('sin conexión'); });
   }
+  /* ---------- ubicaciones ---------- */
+  var UBIC = {}, UBICPEND = {};       // clave -> {u, t, q}; las que faltan subir
+  function ubKey(cod) { return String(cod).replace(/[.$#\[\]\/\s]/g, '_'); }
+  function ubicDe(k) { var o = UBIC[ubKey(S.cod[k])]; return String(o ? o.u : (S.ubi && S.ubi[k]) || '').trim(); }
+  function guardarUbic() { return guardar('ubic', { ses: NUBE.ses, m: UBIC, p: UBICPEND }); }
+  function subirUbic() {
+    if (!nubeOn() || !NUBE.ses) return Promise.resolve();
+    return Promise.all(Object.keys(UBICPEND).map(function (key) {
+      var o = UBIC[key]; if (!o) { delete UBICPEND[key]; return null; }
+      return fetch(nubeBase() + '/ubic/' + NUBE.ses + '/' + key + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) })
+        .then(function (r) { if (r.ok) { delete UBICPEND[key]; } }).catch(function () {});
+    })).then(guardarUbic);
+  }
+  function bajarUbic() {
+    if (!nubeOn() || !NUBE.ses || !S) return Promise.resolve();
+    return subirUbic().then(function () { return fetch(nubeBase() + '/ubic/' + NUBE.ses + '.json'); }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      var cambio = false;
+      Object.keys(d || {}).forEach(function (key) {
+        var o = d[key]; if (!o || typeof o.u !== 'string') return;
+        if (!UBIC[key] || (o.t || 0) > (UBIC[key].t || 0)) { if (!UBICPEND[key]) { UBIC[key] = o; cambio = true; } }
+      });
+      if (cambio) { guardarUbic(); pintarFicha(); }
+    }).catch(function () {});
+  }
+  function editarUbic() {
+    if (sel < 0 || !S) return;
+    var v = prompt('Ubicación de “' + S.tit[sel] + '”\n(vacío para borrarla)', ubicDe(sel));
+    if (v === null) return;
+    v = v.replace(/\s+/g, ' ').trim().slice(0, 40);
+    var key = ubKey(S.cod[sel]);
+    UBIC[key] = { u: v, t: Date.now(), q: CFG.nombre || '', tit: String(S.tit[sel]).trim(), cod: S.cod[sel] };
+    UBICPEND[key] = 1; guardarUbic(); pintarFicha(); toast(v ? '📍 ' + v : 'Ubicación borrada');
+    subirUbic();
+  }
+  $('fUbic').addEventListener('click', editarUbic);
+
+  /* ---------- quién está conectado ---------- */
+  function hace(t) {
+    var m = Math.round((Date.now() - t) / 60000);
+    return m < 1 ? 'recién' : m < 60 ? 'hace ' + m + ' min' : 'hace ' + Math.round(m / 60) + ' h';
+  }
+  function latir() {
+    if (!nubeOn() || document.hidden) return Promise.resolve();
+    var propios = MOV.filter(function (m) { return !m.ajeno; });
+    var u = propios.reduce(function (a, m) { return Math.max(a, m.t || 0); }, 0);
+    var sub = propios.filter(function (m) { return !m.subido; }).length;
+    return fetch(nubeBase() + '/presencia/' + encodeURIComponent(CFG.dev || 'x') + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ n: CFG.nombre || '(sin nombre)', t: Date.now(), u: u, s: sub }) }).catch(function () {});
+  }
+  setInterval(function () { latir(); bajarUbic(); }, 30000);
+  setTimeout(function () { latir(); bajarUbic(); }, 3000);
+
   /* ---------- mensajes de la PC ---------- */
   var MSGV = {}, MSGQ = [], MSGINI = false;
   try { MSGV = JSON.parse(localStorage.getItem('msgVistos') || '{}') || {}; MSGINI = localStorage.getItem('msgIni') === '1'; } catch (e) {}
@@ -980,7 +1047,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       } catch (e) {}
     }
   }
-  $('msgOk').addEventListener('click', function () { MSGQ.shift(); $('msgBox').hidden = true; mostrarMsg(); });
+  $('msgOk').addEventListener('click', function () {
+    var vm = MSGQ[0];
+    if (vm && vm.id && nubeOn()) {
+      try { fetch(nubeBase() + '/msgs/' + vm.id + '/resp/' + encodeURIComponent(CFG.dev || 'x') + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n: CFG.nombre || '(sin nombre)', t: Date.now() }) }).catch(function () {}); } catch (e) {}
+    }
+    MSGQ.shift(); $('msgBox').hidden = true; mostrarMsg(); });
   function bajarMsgs() {
     if (!nubeOn()) return Promise.resolve();
     return fetch(nubeBase() + '/msgs.json').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }).then(function (d) {
@@ -993,7 +1065,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var m = d[id] || {};
         if (!MSGINI) return;                        // la primera vez no se muestran los viejos
         if (m.para && m.para !== yo) return;
-        if (m.texto) MSGQ.push(m);
+        if (m.texto) { m.id = id; MSGQ.push(m); }
       });
       MSGINI = true; guardarMsgV(); mostrarMsg();
     }).catch(function () {});
@@ -1035,7 +1107,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     estadoNube('conectando…');
     return traerSesion().then(function (s) {
       NUBE.remota = s;
-      if (!S) { estadoNube(s && s.pc ? 'elegir conteo' : 'conectada'); return; }
+      if (!S) {
+        estadoNube(s && s.pc ? 'elegir conteo' : 'conectada');
+        // arrancó vacía con la Nube configurada: se recupera sola (una vez), salvo que haya algo sin subir o un error al abrir lo guardado
+        if (s && s.pc && !ERRCARGA && !AUTOREC && !MOV.some(function (m) { return !m.subido && !m.ajeno; })) {
+          AUTOREC = true; toast('Recuperando el conteo desde la nube…'); return unirseNube(s);
+        }
+        return;
+      }
       if (NUBE.ses && s && s.id === NUBE.ses) return iniciarFlujo();
       if (NUBE.ses) { estadoNube('conteo nuevo'); return; }       // empezaron otro conteo: hay que cargar el stock.csv nuevo
       if (!s) return crearSesion();                               // todavía no hay conteo: este celu lo abre
@@ -1148,7 +1227,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function setModo(m) {
     MODO = m; try { localStorage.setItem('modoScan', m); } catch (e) {}
     $('mCons').setAttribute('aria-pressed', m === 'cons'); $('mCont').setAttribute('aria-pressed', m === 'cont');
-    $('scanMenos').hidden = $('scanFin').hidden = m !== 'cont';
+    $('scanMenos').hidden = $('scanMas').hidden = $('scanFin').hidden = m !== 'cont';
     textoScan();
   }
   function cerrarScan() {
@@ -1231,6 +1310,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       }, 250);
     }).catch(function () { toast('No tengo permiso para usar la cámara'); });
     });
+  }
+  function masUltimo() {
+    var c = ULTLIB; if (!c || !CONTEO[c]) { pitar(false); textoScan('Primero leé un libro', true); return; }
+    CONTEO[c].n++;
+    guardarConteo(); pitar(true);
+    textoScan('+1 · ' + CONTEO[c].tit + ' · contados ' + CONTEO[c].n);
   }
   function menosUltimo() {
     var c = ULTLIB; if (!c || !CONTEO[c]) return;
@@ -1365,6 +1450,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('mCons').addEventListener('click', function () { setModo('cons'); });
   $('mCont').addEventListener('click', function () { setModo('cont'); });
   $('scanMenos').addEventListener('click', menosUltimo);
+  $('scanMas').addEventListener('click', masUltimo);
   $('scanFin').addEventListener('click', function () { cerrarScan(); abrirRev(); });
   $('revAplicar').addEventListener('click', aplicarRev);
   $('revSeguir').addEventListener('click', function () { cerrarRev(); setModo('cont'); abrirScan(); });
@@ -1437,20 +1523,22 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   } catch (e) {}
 
   pintarVacio();
-  Promise.all([leer('csv'), leer('mov'), leer('cfg'), leer('conteo')]).then(function (r) {
-    var c = r[0], m = r[1], g = r[2], cn = r[3];
+  Promise.all([leer('csv'), leer('mov'), leer('cfg'), leer('conteo'), leer('ubic')]).then(function (r) {
+    var c = r[0], m = r[1], g = r[2], cn = r[3], ub = r[4];
+    if (ub && ub.m && m && ub.ses === m.ses) { UBIC = ub.m; UBICPEND = ub.p || {}; }
     if (cn && cn.c && cn.o) { CONTEO = cn.c; ORDEN = cn.o; }
     if (g) { Object.keys(g).forEach(function (k) { CFG[k] = g[k]; }); }
     if (!CFG.dev) { CFG.dev = Math.random().toString(36).slice(2, 6); guardarCfg(); }
     if (m) { MOV = m.movs || []; OVER = m.over || {}; APL = m.apl || {}; NUBE.ses = m.ses || ''; }
     if (c && c.nube && c.filas) {
       CSVTXT = c;
-      try { S = armarNube(c.filas, c.nombre, c.fecha); MOV.forEach(function (m) { var k = libroPorCod(m.cod); if (k != null && m.delta) S.d1[k] += m.delta; }); } catch (e) { S = null; }
+      try { S = armarNube(c.filas, c.nombre, c.fecha); MOV.forEach(function (m) { var k = libroPorCod(m.cod); if (k != null && m.delta) S.d1[k] += m.delta; }); } catch (e) { S = null; ERRCARGA = 'No pude abrir el stock guardado (' + (e && e.message || e) + '). Lo guardado sigue ahí: probá cerrar y abrir la app, o conectá la Nube.'; }
     } else if (c && c.texto) {
       CSVTXT = c;
-      try { S = armar(c.texto, c.enc, c.nombre, c.fecha); aplicarOver(S, OVER); } catch (e) { S = null; }
+      try { S = armar(c.texto, c.enc, c.nombre, c.fecha); aplicarOver(S, OVER); } catch (e) { S = null; ERRCARGA = 'No pude abrir el stock guardado (' + (e && e.message || e) + '). Lo guardado sigue ahí: probá cerrar y abrir la app, o conectá la Nube.'; }
     }
     estado(); contar(); pintarResultados(); pintarAvisoConteo();
+    if (ERRCARGA) { toast('⚠ ' + ERRCARGA.slice(0, 90)); pintarVacio(); }
     if (nubeOn()) conectar();
   });
 })();
