@@ -631,7 +631,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('fDep11').textContent = 'Dep 11: ' + S.d11[sel];
     $('fPvp').textContent = S.pvp[sel] ? 'PVP ' + pesos(S.pvp[sel]) : '';
     $('fCod').textContent = S.cod[sel];
-    var ub = ubicDe(sel); $('fUbic').textContent = ub ? '📍 ' + ub : '📍 Poner ubicación';
+    var ub = ubicDe(sel); $('fUbic').textContent = ub ? '📍 ' + ub : '📍';
     $('bMenos').disabled = d + pend <= 0;
   }
   function editarCant(ini) {
