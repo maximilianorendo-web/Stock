@@ -235,7 +235,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
         <span class="rot">Dep 1:</span><button type="button" class="num" id="fDep" aria-label="Tocá para escribir cuántos hay">0</button><input id="fIn" class="num-in" type="number" inputmode="numeric" min="0" max="99999" step="1" aria-label="Cuántos hay" hidden><span class="nuevo" id="fNuevo" hidden></span>
       </div>
       <div class="otros"><span id="fDep11"></span><span id="fPvp"></span><span id="fCod"></span></div>
-      <div class="ubic"><button type="button" class="btn chico" id="fUbic"></button> <button type="button" class="btn chico" id="fTapa">Tapa</button></div>
+      <div class="ubic"><button type="button" class="btn chico" id="fUbic" aria-label="Ubicación del libro"></button> <button type="button" class="btn chico" id="fTapa">Tapa</button></div>
       <div class="tres">
         <button type="button" class="menos" id="bMenos" aria-label="Restar uno">−</button>
         <button type="button" class="ok" id="bOk" aria-label="Confirmar el cambio">Ok</button>
@@ -1026,7 +1026,15 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (TAPAS[cod] !== undefined) { listo(TAPAS[cod]); return; }
     buscarTapa(codigosTapa(k), 0).then(function (r) { TAPAS[cod] = r; listo(r); }).catch(function (e) {
       if (tapaSel !== k) return;
-      msg.textContent = e && e.http ? 'La tienda respondió un error (' + e.http + ').' : 'No pude consultar la tienda: sin internet, o la tienda no permite la consulta desde acá.';
+      if (e && e.http) { msg.textContent = 'La tienda respondió un error (' + e.http + ').'; return; }
+      if (navigator.onLine === false) { msg.textContent = 'No hay internet.'; return; }
+      msg.textContent = 'Revisando por qué falló…';
+      // sin leer la respuesta (no-cors): si llega, la tienda está viva y lo que bloquea es el permiso (CORS)
+      fetch(TIENDA + '/wp-json/', { mode: 'no-cors' }).then(function () {
+        if (tapaSel === k) msg.textContent = 'La tienda responde, pero no deja que esta app lea sus datos (bloqueo CORS). Hay que habilitarlo en la tienda o traer las tapas desde MR System.';
+      }).catch(function () {
+        if (tapaSel === k) msg.textContent = 'No pude llegar a ' + TIENDA.replace(/^https?:\/\//, '') + ' desde este celular. ¿La dirección de la tienda es esa?';
+      });
     });
   }
   function cerrarTapa() { tapaSel = -1; $('tapaPanel').hidden = true; }
