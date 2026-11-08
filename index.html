@@ -235,7 +235,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
         <span class="rot">Dep 1:</span><button type="button" class="num" id="fDep" aria-label="Tocá para escribir cuántos hay">0</button><input id="fIn" class="num-in" type="number" inputmode="numeric" min="0" max="99999" step="1" aria-label="Cuántos hay" hidden><span class="nuevo" id="fNuevo" hidden></span>
       </div>
       <div class="otros"><span id="fDep11"></span><span id="fPvp"></span><span id="fCod"></span></div>
-      <div class="ubic"><button type="button" class="btn chico" id="fUbic"></button> <button type="button" class="btn chico" id="fTapa">Tapa?</button></div>
+      <div class="ubic"><button type="button" class="btn chico" id="fUbic"></button> <button type="button" class="btn chico" id="fTapa">Tapa</button></div>
       <div class="tres">
         <button type="button" class="menos" id="bMenos" aria-label="Restar uno">−</button>
         <button type="button" class="ok" id="bOk" aria-label="Confirmar el cambio">Ok</button>
@@ -642,7 +642,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('fDep11').textContent = 'Dep 11: ' + S.d11[sel];
     $('fPvp').textContent = S.pvp[sel] ? 'PVP ' + pesos(S.pvp[sel]) : '';
     $('fCod').textContent = S.cod[sel];
-    var ub = ubicDe(sel); $('fUbic').textContent = ub ? '📍 ' + ub : '📍 Poner ubicación';
+    var ub = ubicDe(sel); $('fUbic').textContent = ub ? '📍 ' + ub : '📍';
     $('bMenos').disabled = d + pend <= 0;
   }
   function editarCant(ini) {
