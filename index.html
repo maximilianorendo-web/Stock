@@ -462,7 +462,11 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function armarNube(filas, nombre, fecha) {
     var P = { nombre: nombre, fecha: fecha, enc: null, eol: '\r\n', lineas: null, c: null, pos: [], cod: [], tit: [], aut: [], edi: [],
               ubi: [], isbn: [], d1: [], d11: [], pvp: [], hay: [], ediN: [], titN: [], porCod: new Map(), porCodigo: new Map() };
-    filas.forEach(function (f, i) {
+    filas.forEach(function (f, i) { agregarFila(P, f, i); });
+    return P;
+  }
+  function agregarFila(P, f, i) {
+    {
       if (!f) return;
       var k = P.pos.length, t = String(f[1] == null ? '' : f[1]);
       P.pos.push(i); P.cod.push(String(f[0] == null ? '' : f[0])); P.tit.push(t);
@@ -473,8 +477,34 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       P.hay.push(norm(t + ' ' + P.aut[k])); P.ediN.push(norm(P.edi[k])); P.titN.push(norm(t));
       if (P.cod[k] && !P.porCodigo.has(P.cod[k])) P.porCodigo.set(P.cod[k], k);
       [f[0], f[7], f[8]].forEach(function (c) { var cn = codNorm(c); if (cn.length >= 6 && !P.porCod.has(cn)) P.porCod.set(cn, k); });
-    });
-    return P;
+    }
+  }
+  /* libros nuevos que MR System suma a la base ya publicada (ALTAS): se incorporan solos, sin perder nada */
+  var baseOcupada = false;
+  function bajarBase() {
+    if (baseOcupada || !nubeOn() || !NUBE.ses || !S || !CSVTXT || !CSVTXT.nube || !CSVTXT.filas) return Promise.resolve();
+    var ses = NUBE.ses, tengo = CSVTXT.filas.length;
+    baseOcupada = true;
+    return fetch(nubeBase() + '/base/' + ses + '/n.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (n) {
+      n = +n || 0;
+      if (n <= tengo || ses !== NUBE.ses) return;
+      var pedidos = [], desde = Math.floor(tengo / 10000), hasta = Math.floor((n - 1) / 10000);
+      for (var i = desde; i <= hasta; i++) pedidos.push(fetch(nubeBase() + '/base/' + ses + '/p' + i + '.json').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }));
+      return Promise.all(pedidos).then(function (partes) {
+        var todas = [];
+        partes.forEach(function (p, j) {
+          var arr = Array.isArray(p) ? p : Object.keys(p || {}).sort(function (a, b) { return a - b; }).map(function (k) { return p[k]; });
+          arr.forEach(function (f, q) { todas[(desde + j) * 10000 + q] = f; });
+        });
+        var nuevas = todas.slice(tengo, n).filter(function (f) { return f; });
+        if (!nuevas.length || !S || ses !== NUBE.ses || CSVTXT.filas.length !== tengo) return;
+        nuevas.forEach(function (f) { CSVTXT.filas.push(f); agregarFila(S, f, CSVTXT.filas.length - 1); });
+        S.autN = null; EDIS = null;
+        guardar('csv', CSVTXT);
+        toast('+ ' + nuevas.length + (nuevas.length === 1 ? ' libro nuevo' : ' libros nuevos'));
+        estado(); pintarFicha(); pintarResultados();
+      });
+    }).catch(function () {}).then(function () { baseOcupada = false; });
   }
   function aplicarOver(P, over) {
     Object.keys(over).forEach(function (p) {
@@ -1120,8 +1150,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     return fetch(nubeBase() + '/presencia/' + encodeURIComponent(CFG.dev || 'x') + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ n: CFG.nombre || '(sin nombre)', t: Date.now(), u: u, s: sub }) }).catch(function () {});
   }
-  setInterval(function () { latir(); bajarUbic(); }, 30000);
-  setTimeout(function () { latir(); bajarUbic(); }, 3000);
+  setInterval(function () { latir(); bajarUbic(); bajarBase(); }, 30000);
+  setTimeout(function () { latir(); bajarUbic(); bajarBase(); }, 3000);
 
   /* ---------- mensajes de la PC ---------- */
   var MSGV = {}, MSGQ = [], MSGINI = false;
