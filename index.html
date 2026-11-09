@@ -116,6 +116,8 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .fila .d.cero { color: var(--bad); }
 .visto { font-size: 11px; color: var(--good); opacity: .85; font-variant-numeric: tabular-nums; }
 .fila .visto { margin-top: 1px; }
+.sins { display: flex; gap: 8px; flex-wrap: wrap; }
+.link { appearance: none; background: none; border: 0; padding: 0; font: inherit; color: var(--accent); text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; text-align: left; }
 .sin { align-self: flex-start; appearance: none; border: 1.5px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .sin[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 .resumen { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
@@ -224,8 +226,12 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <button class="btn icono" id="btnScan" type="button" aria-label="Escanear código de barras" title="Escanear código de barras" hidden><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1.2-2h5.6L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg></button>
     </div>
 
-    <button class="sin" id="btnSin" type="button" aria-pressed="false" title="Mostrar solo los libros que todavía no se contaron">Sin contar</button>
+    <div class="sins">
+      <button class="sin" id="btnSin" type="button" aria-pressed="false" title="Mostrar solo los libros que todavía no se contaron">Sin contar</button>
+      <button class="sin" id="btnCero" type="button" aria-pressed="false" title="Mostrar solo los libros con stock cero en el sistema">Sin stock</button>
+    </div>
     <div id="chipEdi" class="chip" hidden><span id="chipTxt"></span><button id="chipX" type="button" aria-label="Quitar filtro de editorial">×</button></div>
+    <div id="chipAut" class="chip" hidden><span id="chipAutTxt"></span><button id="chipAutX" type="button" aria-label="Quitar filtro de autor">×</button></div>
 
     <div id="ficha" class="ficha" hidden>
       <h2 id="fTit"></h2>
@@ -351,7 +357,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   var CSVTXT = null;       // el stock.csv tal cual se cargó (para volver a empezar limpio)
   var CFG = { url: '', clave: '', nombre: '', activo: false, dev: '' };
   var NUBE = { ses: '', remota: null, estado: 'apagada', listo: false, es: null, poll: null };
-  var FILTRO_EDI = '', FILTRO_NOM = '', EDIS = null;
+  var FILTRO_EDI = '', FILTRO_NOM = '', EDIS = null, FILTRO_AUT = '', FILTRO_AUTNOM = '', SOLO_CERO = false;
+  function hayFiltro() { return !!(FILTRO_EDI || FILTRO_AUT || SOLO_SIN || SOLO_CERO); }
+  function limpiarFiltros() {
+    FILTRO_EDI = ''; FILTRO_NOM = ''; FILTRO_AUT = ''; FILTRO_AUTNOM = ''; SOLO_SIN = false; SOLO_CERO = false;
+    $('btnSin').setAttribute('aria-pressed', 'false'); $('btnCero').setAttribute('aria-pressed', 'false');
+  }
   var sel = -1, pend = 0, res = [], toastT = null;
   var PAG = 0, PAG_ULT = '', TAM = 15;     // resultados por página
   var CONTEO = {}, ORDEN = [], ULTLIB = null;    // conteo por escáner: código -> {cod, tit, n}
@@ -547,12 +558,15 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       return k == null ? [] : [k];
     }
     var qn = norm(q);
-    if (!qn && !FILTRO_EDI && !SOLO_SIN) return [];
+    if (!qn && !hayFiltro()) return [];
+    if (FILTRO_AUT && !S.autN) S.autN = S.aut.map(norm);
     var pats = qn ? qn.split(' ').map(function (w) { return new RegExp('(^|[^a-z0-9])' + esc(w)); }) : [];
     var out = [];
     for (var i = 0; i < S.hay.length; i++) {
       if (FILTRO_EDI && S.ediN[i] !== FILTRO_EDI) continue;
       if (SOLO_SIN && VISTO[S.cod[i]]) continue;
+      if (SOLO_CERO && S.d1[i] > 0) continue;
+      if (FILTRO_AUT && S.autN[i].indexOf(FILTRO_AUT) < 0) continue;
       var h = S.hay[i], ok = true;
       for (var j = 0; j < pats.length; j++) if (!pats[j].test(h)) { ok = false; break; }
       if (ok) out.push(i);
@@ -580,9 +594,11 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('borrarQ').hidden = !q;
     $('chipEdi').hidden = !FILTRO_EDI;
     if (FILTRO_EDI) $('chipTxt').textContent = 'Editorial: ' + FILTRO_NOM;
-    if (!S || (!q && !FILTRO_EDI && !SOLO_SIN)) { res = []; if (sel < 0) pintarVacio(); else $('resultados').innerHTML = ''; return; }
+    $('chipAut').hidden = !FILTRO_AUT;
+    if (FILTRO_AUT) $('chipAutTxt').textContent = 'Autor: ' + FILTRO_AUTNOM;
+    if (!S || (!q && !hayFiltro())) { res = []; if (sel < 0) pintarVacio(); else $('resultados').innerHTML = ''; return; }
     res = buscar(q);
-    var clavePag = q + '|' + FILTRO_EDI + '|' + SOLO_SIN;
+    var clavePag = q + '|' + FILTRO_EDI + '|' + FILTRO_AUT + '|' + SOLO_SIN + '|' + SOLO_CERO;
     if (clavePag !== PAG_ULT) { PAG = 0; PAG_ULT = clavePag; }          // otra búsqueda: vuelve a la página 1
     var paginas = Math.max(1, Math.ceil(res.length / TAM));
     if (PAG >= paginas) PAG = paginas - 1;
@@ -590,7 +606,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!res.length) {
       var d = document.createElement('div'); d.className = 'vacio';
       var b = document.createElement('b'); b.textContent = 'Sin resultado';
-      var p = document.createElement('span'); p.textContent = SOLO_SIN ? 'No queda nada sin contar con este filtro.' : FILTRO_EDI ? 'Sin resultados' : 'Probá con menos palabras o con el ISBN.';
+      var p = document.createElement('span'); p.textContent = SOLO_SIN ? 'No queda nada sin contar con este filtro.' : SOLO_CERO ? 'No hay libros sin stock con este filtro.' : (FILTRO_EDI || FILTRO_AUT) ? 'Sin resultados' : 'Probá con menos palabras o con el ISBN.';
       d.appendChild(b); d.appendChild(p); r.appendChild(d); return;
     }
     var caja = document.createElement('div'); caja.className = 'lista'; caja.setAttribute('role', 'listbox');
@@ -633,7 +649,16 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     armarVisto();
     var tvf = textoVisto(sel), fv = $('fVisto'); fv.hidden = !tvf; fv.textContent = tvf;
     $('fTit').textContent = S.tit[sel];
-    $('fSub').textContent = [S.aut[sel], S.edi[sel]].filter(Boolean).join(' · ');
+    var fs = $('fSub'), au = String(S.aut[sel] || '').trim(), ed = String(S.edi[sel] || '').trim();
+    fs.textContent = '';
+    if (au) {
+      var ba = document.createElement('button'); ba.type = 'button'; ba.className = 'link'; ba.textContent = au;
+      ba.setAttribute('aria-label', 'Ver los libros de ' + au);
+      ba.addEventListener('click', function () { filtrarAutor(au); });
+      fs.appendChild(ba);
+    }
+    if (au && ed) fs.appendChild(document.createTextNode(' · '));
+    if (ed) fs.appendChild(document.createTextNode(ed));
     var d = S.d1[sel];
     var e = $('fDep'); e.textContent = String(d); e.className = 'num' + (d <= 0 ? ' cero' : '');
     var nv = $('fNuevo');
@@ -920,7 +945,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       cerrarFlujo(); NUBE.listo = false;
       reiniciarBase();                       // un stock nuevo ya trae todo al día
       guardar('csv', CSVTXT);
-      EDIS = null; FILTRO_EDI = ''; FILTRO_NOM = '';
+      EDIS = null; FILTRO_EDI = ''; FILTRO_NOM = ''; FILTRO_AUT = ''; FILTRO_AUTNOM = '';
       estado(); pintarFicha(); pintarResultados(); pintarMov();
       toast('✓ ' + S.pos.length.toLocaleString('es-AR') + ' libros cargados');
       $('q').focus();
@@ -1215,7 +1240,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       reiniciarBase();
       NUBE.remota = s; NUBE.ses = s.id;
       guardar('csv', CSVTXT); guardarMov();
-      FILTRO_EDI = ''; FILTRO_NOM = ''; EDIS = null;
+      FILTRO_EDI = ''; FILTRO_NOM = ''; FILTRO_AUT = ''; FILTRO_AUTNOM = ''; EDIS = null;
       estado(); pintarFicha(); pintarResultados(); pintarMov();
       toast('✓ ' + S.pos.length.toLocaleString('es-AR') + ' libros de la PC');
       return iniciarFlujo();
@@ -1462,6 +1487,15 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('tabNube').addEventListener('click', function () { pestana('nube'); });
   var tq = null;
   function nuevaBusqueda() { sel = -1; pintarFicha(); pintarResultados(); }
+  function filtrarAutor(nombre) {
+    FILTRO_AUT = norm(nombre); FILTRO_AUTNOM = nombre; $('q').value = '';
+    nuevaBusqueda(); window.scrollTo(0, 0);
+  }
+  $('chipAutX').addEventListener('click', function () { FILTRO_AUT = ''; FILTRO_AUTNOM = ''; nuevaBusqueda(); });
+  $('btnCero').addEventListener('click', function () {
+    if (!S) { toast('Primero cargá el stock'); return; }
+    SOLO_CERO = !SOLO_CERO; this.setAttribute('aria-pressed', SOLO_CERO); nuevaBusqueda();
+  });
   $('q').addEventListener('input', function () { clearTimeout(tq); tq = setTimeout(nuevaBusqueda, 160); });
   $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(tq); nuevaBusqueda(); this.blur(); } });
   $('borrarQ').addEventListener('click', function () { $('q').value = ''; nuevaBusqueda(); $('q').focus(); });
@@ -1582,7 +1616,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!$('ediPanel').hidden) { cerrarEdi(); return true; }
     if ($('vistaBuscar').hidden) { pestana('buscar'); return true; }
     if (sel >= 0 && res.length !== 1) { sel = -1; pend = 0; pintarFicha(); pintarResultados(); return true; }   // con un solo resultado, la ficha sale sola: se limpia la búsqueda
-    if ($('q').value || FILTRO_EDI || SOLO_SIN || sel >= 0) { $('q').value = ''; FILTRO_EDI = ''; FILTRO_NOM = ''; SOLO_SIN = false; $('btnSin').setAttribute('aria-pressed', 'false'); nuevaBusqueda(); return true; }
+    if ($('q').value || hayFiltro() || sel >= 0) { $('q').value = ''; limpiarFiltros(); nuevaBusqueda(); return true; }
     return false;
   }
   try {
