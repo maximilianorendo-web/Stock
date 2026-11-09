@@ -228,7 +228,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 
     <div class="sins">
       <button class="sin" id="btnSin" type="button" aria-pressed="false" title="Mostrar solo los libros que todavía no se contaron">Sin contar</button>
-      <button class="sin" id="btnCero" type="button" aria-pressed="false" title="Mostrar solo los libros con stock cero en el sistema">Sin stock</button>
+      <button class="sin" id="btnCero" type="button" aria-pressed="false" title="Mostrar solo los libros con stock en el sistema">Con stock</button>
     </div>
     <div id="chipEdi" class="chip" hidden><span id="chipTxt"></span><button id="chipX" type="button" aria-label="Quitar filtro de editorial">×</button></div>
     <div id="chipAut" class="chip" hidden><span id="chipAutTxt"></span><button id="chipAutX" type="button" aria-label="Quitar filtro de autor">×</button></div>
@@ -595,7 +595,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     for (var i = 0; i < S.hay.length; i++) {
       if (FILTRO_EDI && S.ediN[i] !== FILTRO_EDI) continue;
       if (SOLO_SIN && VISTO[S.cod[i]]) continue;
-      if (SOLO_CERO && S.d1[i] > 0) continue;
+      if (SOLO_CERO && S.d1[i] <= 0) continue;
       if (FILTRO_AUT && S.autN[i].indexOf(FILTRO_AUT) < 0) continue;
       var h = S.hay[i], ok = true;
       for (var j = 0; j < pats.length; j++) if (!pats[j].test(h)) { ok = false; break; }
@@ -636,7 +636,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!res.length) {
       var d = document.createElement('div'); d.className = 'vacio';
       var b = document.createElement('b'); b.textContent = 'Sin resultado';
-      var p = document.createElement('span'); p.textContent = SOLO_SIN ? 'No queda nada sin contar con este filtro.' : SOLO_CERO ? 'No hay libros sin stock con este filtro.' : (FILTRO_EDI || FILTRO_AUT) ? 'Sin resultados' : 'Probá con menos palabras o con el ISBN.';
+      var p = document.createElement('span'); p.textContent = SOLO_SIN ? 'No queda nada sin contar con este filtro.' : SOLO_CERO ? 'No hay libros con stock con este filtro.' : (FILTRO_EDI || FILTRO_AUT) ? 'Sin resultados' : 'Probá con menos palabras o con el ISBN.';
       d.appendChild(b); d.appendChild(p); r.appendChild(d); return;
     }
     var caja = document.createElement('div'); caja.className = 'lista'; caja.setAttribute('role', 'listbox');
