@@ -1077,7 +1077,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }).catch(function () { estadoNube('sin conexión'); });
   }
   /* ---------- tapa: las direcciones de las fotos las sube MR System a la nube (STOCK → TAPAS) ---------- */
-  var TAPAMAP = null, TAPAPRE = '', TAPAT = 0, tapaSel = -1, tapaCarga = null;
+  var TAPAMAP = null, TAPASM = {}, TAPAPRE = '', TAPAT = 0, tapaSel = -1, tapaCarga = null;
   function codigosTapa(k) {
     var c = [S.cod[k], S.isbn && S.isbn[k]], out = [];
     c.forEach(function (v) {
@@ -1087,10 +1087,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     return out;
   }
   function armarTapas(d) {
-    TAPAMAP = {}; TAPAPRE = d.pre || ''; TAPAT = d.t || 0;
+    TAPAMAP = {}; TAPASM = {}; TAPAPRE = d.pre || ''; TAPAT = d.t || 0;
     (d.filas || []).forEach(function (f) {
-      var k = String(f[0]); TAPAMAP[k] = f[1];
-      var z = k.replace(/^0+/, ''); if (z && !(z in TAPAMAP)) TAPAMAP[z] = f[1];
+      var k = String(f[0]); TAPAMAP[k] = f[1]; if (f[2]) TAPASM[k] = f[2];
+      var z = k.replace(/^0+/, ''); if (z && !(z in TAPAMAP)) { TAPAMAP[z] = f[1]; if (f[2]) TAPASM[z] = f[2]; }
     });
   }
   function cargarTapas() {
@@ -1143,7 +1143,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     function poner() {
       if (sel !== k || !TAPAMAP) return;
       var cods = codigosTapa(k), suf = null;
-      for (var i = 0; i < cods.length && suf == null; i++) if (cods[i] in TAPAMAP) suf = TAPAMAP[cods[i]];
+      for (var i = 0; i < cods.length && suf == null; i++) if (cods[i] in TAPAMAP) suf = TAPASM[cods[i]] || TAPAMAP[cods[i]];
       if (suf == null) { im.hidden = true; return; }
       miniK = k;
       im.onerror = function () { im.hidden = true; };
