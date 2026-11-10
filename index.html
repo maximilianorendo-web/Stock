@@ -73,7 +73,10 @@ header .estado b { font-weight: 600; }
   #vistaBuscar > * { grid-column: 1; min-width: 0; }
   #vistaBuscar > #ficha { grid-column: 2; grid-row: 1 / span 12; position: sticky; top: 12px; padding: 22px; gap: 12px; }
   #vistaBuscar > #resultados { max-height: none; }
-  .mini { height: 340px; max-width: 48%; }
+  .mini { display: none !important; }
+  #fGrande { display: block; align-self: center; max-width: 100%; max-height: max(220px, calc(100vh - 480px)); object-fit: contain; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.25); background: #fff; }
+  #fGrande[hidden] { display: none; }
+  #fTapa { display: none; }
   #vistaMov, #vistaNube { width: 100%; max-width: 760px; margin: 0 auto; }
   .fila { cursor: pointer; }
   .fila:hover { filter: brightness(0.97); }
@@ -289,6 +292,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
         <button type="button" class="ok" id="bOk" aria-label="Confirmar el cambio">Ok</button>
         <button type="button" class="mas" id="bMas" aria-label="Sumar uno">+</button>
       </div>
+      <img id="fGrande" alt="Tapa" referrerpolicy="no-referrer" hidden>
     </div>
 
     <div id="avisoConteo" class="aviso" hidden style="display:flex;gap:10px;align-items:center;justify-content:space-between"><span id="avisoConteoTxt"></span><button class="btn chico" id="avisoConteoBtn" type="button">Revisar</button></div>
@@ -1248,16 +1252,18 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   var TAPAAUTO = true, miniK = -2;
   try { TAPAAUTO = localStorage.getItem('tapaAuto') !== '0'; } catch (e) {}
+  var ANCHO = window.matchMedia ? window.matchMedia('(min-width: 900px)') : { matches: false };
   function pintarMini() {
-    var im = $('fMini'), bt = $('fTapa');
+    var ancho = ANCHO.matches, im = ancho ? $('fGrande') : $('fMini'), otra = ancho ? $('fMini') : $('fGrande'), bt = $('fTapa');
     bt.hidden = TAPAAUTO;
+    otra.hidden = true; otra.removeAttribute('src');
     if (!TAPAAUTO || sel < 0 || !S) { im.hidden = true; im.removeAttribute('src'); miniK = -2; return; }
     if (miniK === sel) return;
     var k = sel;
     function poner() {
       if (sel !== k || !TAPAMAP) return;
       var cods = codigosTapa(k), suf = null;
-      for (var i = 0; i < cods.length && suf == null; i++) if (cods[i] in TAPAMAP) suf = TAPASM[cods[i]] || TAPAMAP[cods[i]];
+      for (var i = 0; i < cods.length && suf == null; i++) if (cods[i] in TAPAMAP) suf = ancho ? TAPAMAP[cods[i]] : (TAPASM[cods[i]] || TAPAMAP[cods[i]]);
       if (suf == null) { im.hidden = true; return; }
       miniK = k;
       im.onerror = function () { im.hidden = true; };
@@ -1267,6 +1273,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     im.hidden = true; im.removeAttribute('src');
     if (TAPAMAP) poner(); else cargarTapas().then(poner);
   }
+  if (ANCHO.addEventListener) ANCHO.addEventListener('change', function () { miniK = -2; pintarMini(); });
   $('fMini').addEventListener('click', abrirTapa);
   $('aTapa').checked = TAPAAUTO;
   $('aTapa').addEventListener('change', function () {
