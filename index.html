@@ -727,6 +727,27 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!silencioso) { pintarResultados(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   }
   var fichaSel = -2;
+  /* deslizar la ficha: a la izquierda, el libro siguiente de los resultados; a la derecha, el anterior */
+  (function () {
+    var x0 = 0, y0 = 0, t0 = 0, vale = false, ficha = $('ficha');
+    ficha.addEventListener('touchstart', function (e) {
+      var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now();
+      vale = e.touches.length === 1 && !/^(INPUT|TEXTAREA)$/.test((e.target.tagName || ''));
+    }, { passive: true });
+    ficha.addEventListener('touchend', function (e) {
+      if (!vale) return; vale = false;
+      var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Math.abs(dx) < 70 || Math.abs(dx) < 1.8 * Math.abs(dy) || Date.now() - t0 > 700) return;
+      var i = res.indexOf(sel);
+      if (i < 0 || res.length < 2) return;
+      var j = dx < 0 ? i + 1 : i - 1;
+      if (j < 0 || j >= res.length) { toast(dx < 0 ? 'Es el último de los resultados' : 'Es el primero de los resultados'); return; }
+      if (pend) { toast('Primero confirmá con Ok o dejá el cambio en cero'); return; }
+      PAG = Math.floor(j / TAM);
+      elegir(res[j]);
+      toast((j + 1) + ' de ' + res.length);
+    }, { passive: true });
+  })();
   function pintarFicha() {
     var f = $('ficha');
     if (sel < 0 || !S) { f.hidden = true; fichaSel = -2; return; }
