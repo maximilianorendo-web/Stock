@@ -93,6 +93,8 @@ header .estado b { font-weight: 600; }
 header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba(255,255,255,.35); min-height: 32px; padding: 4px 10px; font-size: 13px; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--press); border-radius: 12px; padding: 3px; gap: 3px; margin-top: 8px; }
+
+.tabs.dos { grid-template-columns: repeat(2, 1fr); }
 .tabs button { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 15px; font-weight: 600; padding: 0 4px; min-height: 38px; border-radius: 9px; cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .buscador { display: flex; gap: 8px; }
@@ -247,9 +249,9 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 </header>
 
 <main class="wrap">
-  <div class="tabs" role="tablist">
+  <div class="tabs dos" id="tabsBar" role="tablist">
     <button role="tab" id="tabBuscar" aria-selected="true" type="button">Buscar</button>
-    <button role="tab" id="tabMov" aria-selected="false" type="button">Movim. <span id="nMov"></span></button>
+    <button role="tab" id="tabMov" aria-selected="false" type="button" hidden>Movim. <span id="nMov"></span></button>
     <button role="tab" id="tabNube" aria-selected="false" type="button">☁ Nube</button>
   </div>
 
@@ -338,7 +340,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <div id="nEstado" class="nota"></div>
     <div id="nOpc" class="wrap" style="gap:8px"></div>
     <button class="btn" id="nNuevo" type="button" hidden>Empezar un conteo nuevo con este stock.csv</button>
-    <details class="como">
+    <details class="como" id="nComo" hidden>
       <summary>Cómo preparar Firebase (una sola vez)</summary>
       <ol>
         <li>Entrá a console.firebase.google.com con la cuenta de Google y creá un proyecto (sin Analytics).</li>
@@ -364,6 +366,19 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <div class="acciones">
       <button class="btn pri" id="foSubir" type="button">Subir</button>
       <button class="btn" id="foCerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="admPanel" class="panel" hidden>
+  <div class="panel-in">
+    <div class="aviso" id="admTit">Modo administrador</div>
+    <div class="nota" id="admTxt"></div>
+    <label class="campoc" id="admL">PIN<input id="admPin" type="password" inputmode="numeric" autocomplete="off" maxlength="12"></label>
+    <div class="acciones">
+      <button class="btn pri" id="admOk" type="button">Entrar</button>
+      <button class="btn" id="admSalir" type="button" hidden>Salir del modo administrador</button>
+      <button class="btn" id="admCerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1864,7 +1879,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     SOLO_CERO = !SOLO_CERO; this.setAttribute('aria-pressed', SOLO_CERO); nuevaBusqueda();
   });
   $('q').addEventListener('input', function () { clearTimeout(tq); tq = setTimeout(nuevaBusqueda, 160); });
-  $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(tq); nuevaBusqueda(); this.blur(); } });
+  $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(tq); nuevaBusqueda(); this.blur(); if (ANCHO.matches && res.length === 1) irResultado(0); } });
   $('borrarQ').addEventListener('click', function () { $('q').value = ''; nuevaBusqueda(); $('q').focus(); });
   var REC = null, SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   function dictar() {
@@ -1961,22 +1976,122 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(r).then(function () { toast('Reglas copiadas'); }, function () { toast('Copialas a mano'); });
   });
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) { $('btnScan').hidden = false; $('btnScan').addEventListener('click', abrirScan); }
-  document.addEventListener('keydown', function (e) {                // en la compu: + − Enter sin tocar la pantalla
-    var t = e.target && e.target.tagName;
-    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON' || e.ctrlKey || e.altKey || e.metaKey) return;
-    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || $('vistaBuscar').hidden || sel < 0) return;
-    if (/^[0-9]$/.test(e.key)) { editarCant(''); return; }          // tipear un número abre el cuadro de cantidad
-    if (e.key === '+' || e.key === '=') { cambiar(1); e.preventDefault(); }
-    else if (e.key === '-') { cambiar(-1); e.preventDefault(); }
-    else if (e.key === 'Enter') { confirmar(); e.preventDefault(); }
-    else if (e.key === '/') { $('q').focus(); e.preventDefault(); }
+  /* ---------- teclado (compu): ↑ ↓ entre resultados, / o Ctrl+K buscar, A autor, + − Ok, Esc quita el filtro ---------- */
+  function irResultado(j) {                                           // j = posición dentro de res (ya validada)
+    if (pend) { toast('Primero confirmá con Ok o dejá el cambio en cero'); return; }
+    PAG = Math.floor(j / TAM);
+    elegir(res[j], true); pintarResultados();
+    var f = document.querySelector('#resultados .fila[aria-selected="true"]');
+    if (f && f.scrollIntoView) f.scrollIntoView({ block: 'nearest' });
+  }
+  function moverResultado(d) {                                        // d: +1 / -1 (un libro) o ±TAM (una página)
+    if (!res.length) return;
+    var i = res.indexOf(sel), j = i < 0 ? (d > 0 ? 0 : res.length - 1) : Math.min(res.length - 1, Math.max(0, i + d));
+    if (j === i) { toast(d > 0 ? 'Es el último de los resultados' : 'Es el primero de los resultados'); return; }
+    irResultado(j);
+  }
+  function enfocarBuscar() { setTimeout(function () { var q = $('q'); q.focus(); q.select(); }, 0); }   // después del evento: así la tecla no se escribe en el cuadro
+  document.addEventListener('keydown', function (e) {
+    if (e.defaultPrevented || e.altKey || e.metaKey) return;
+    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('admPanel').hidden || $('vistaBuscar').hidden) return;
+    var t = e.target && e.target.tagName, enQ = e.target && e.target.id === 'q', k = e.key;
+    if (e.ctrlKey && (k === 'k' || k === 'K')) { enfocarBuscar(); e.preventDefault(); return; }
+    if (e.ctrlKey) return;
+    if ((t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') && !enQ) return;
+    var flecha = k === 'ArrowDown' || k === 'ArrowUp' || k === 'PageDown' || k === 'PageUp';
+    if (flecha && !$('fIn').hidden) return;                              // escribiendo una cantidad
+    if (flecha) {
+      moverResultado(k === 'ArrowDown' ? 1 : k === 'ArrowUp' ? -1 : k === 'PageDown' ? TAM : -TAM);
+      if (enQ) $('q').blur();                                            // así quedan listos + − Ok y los números
+      e.preventDefault(); return;
+    }
+    if (enQ) {
+      if (k === 'Escape') { if ($('q').value) { $('q').value = ''; nuevaBusqueda(); } else $('q').blur(); e.preventDefault(); }
+      return;
+    }
+    if (k === '/') { enfocarBuscar(); e.preventDefault(); return; }
+    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · + − Ok · Esc quita el filtro'); e.preventDefault(); return; }
+    if (k === 'Escape' && FILTRO_AUT) { FILTRO_AUT = ''; FILTRO_AUTNOM = ''; nuevaBusqueda(); e.preventDefault(); return; }
+    if (t === 'BUTTON') return;                                          // Enter sobre un botón enfocado lo activa él
+    if ((k === 'a' || k === 'A') && sel >= 0) {
+      var au = String(S.aut[sel] || '').trim();
+      if (au) filtrarAutor(au); else toast('Este libro no tiene autor');
+      e.preventDefault(); return;
+    }
+    if (sel < 0) return;
+    if (/^[0-9]$/.test(k)) { editarCant(''); return; }                   // tipear un número abre el cuadro de cantidad
+    if (k === '+' || k === '=') { cambiar(1); e.preventDefault(); }
+    else if (k === '-') { cambiar(-1); e.preventDefault(); }
+    else if (k === 'Enter') { confirmar(); e.preventDefault(); }
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); cerrarAdmin(); } });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && NUBE.listo) { bajar(); subirPendientes(); } });
   window.addEventListener('online', function () { if (nubeOn()) { if (NUBE.listo) { bajar(); subirPendientes(); } else conectar(); } });
 
+
+  /* ---------- modo administrador: muestra Movimientos y las instrucciones de Firebase (solo oculta pantallas; no protege los datos) ---------- */
+  function aplicarAdmin() {
+    var a = !!CFG.adm;
+    $('tabMov').hidden = !a; $('nComo').hidden = !a; $('tabsBar').className = 'tabs' + (a ? '' : ' dos');
+    if (!a && !$('vistaMov').hidden) pestana('buscar');
+  }
+  function hashPin(pin) {
+    var txt = 'mrstock:' + CFG.clave + ':' + pin;
+    if (window.crypto && crypto.subtle && window.TextEncoder) {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt)).then(function (b) {
+        return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      });
+    }
+    var h = 5381; for (var i = 0; i < txt.length; i++) h = ((h * 33) ^ txt.charCodeAt(i)) >>> 0;
+    return Promise.resolve('d' + h.toString(16));
+  }
+  var ADMNUEVO = false;
+  function abrirAdmin() {
+    $('admPin').value = '';
+    $('admSalir').hidden = !CFG.adm; $('admL').hidden = !!CFG.adm; $('admOk').hidden = !!CFG.adm;
+    $('admTit').textContent = CFG.adm ? 'Sos administrador' : 'Modo administrador';
+    $('admTxt').textContent = CFG.adm ? 'Ves Movimientos y las instrucciones de Firebase en este equipo.' : (nubeOn() ? 'Escribí el PIN.' : 'Primero conectá la nube, para poder verificar el PIN.');
+    ADMNUEVO = false;
+    $('admPanel').hidden = false;
+    if (!CFG.adm && nubeOn()) {
+      fetch(nubeBase() + '/admin.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        if (!$('admPanel').hidden && !d) { ADMNUEVO = true; $('admTxt').textContent = 'Todavía no hay PIN de administrador. Elegí uno (4 a 12 números).'; $('admOk').textContent = 'Guardar PIN'; }
+      }, function () {});
+      $('admOk').textContent = 'Entrar'; $('admPin').focus();
+    }
+  }
+  function cerrarAdmin() { $('admPanel').hidden = true; $('admPin').value = ''; }
+  $('admCerrar').addEventListener('click', cerrarAdmin);
+  $('admSalir').addEventListener('click', function () { CFG.adm = false; guardarCfg(); aplicarAdmin(); cerrarAdmin(); toast('Saliste del modo administrador'); });
+  $('admPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('admOk').click(); } });
+  $('admOk').addEventListener('click', function () {
+    var pin = $('admPin').value.trim();
+    if (!nubeOn()) { toast('Primero conectá la nube'); return; }
+    if (ADMNUEVO) {
+      if (!/^[0-9]{4,12}$/.test(pin)) { toast('El PIN: de 4 a 12 números'); return; }
+      hashPin(pin).then(function (h) {
+        return fetch(nubeBase() + '/admin.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ h: h }) }).then(function (r) { if (!r.ok) throw new Error('http'); return true; });
+      }).then(function () { CFG.adm = true; guardarCfg(); aplicarAdmin(); cerrarAdmin(); toast('PIN guardado · modo administrador'); }, function () { toast('No pude guardar el PIN (sin conexión)'); });
+      return;
+    }
+    if (!pin) return;
+    Promise.all([hashPin(pin), fetch(nubeBase() + '/admin.json').then(function (r) { return r.ok ? r.json() : null; })]).then(function (r) {
+      if (r[1] && r[1].h === r[0]) { CFG.adm = true; guardarCfg(); aplicarAdmin(); cerrarAdmin(); toast('Modo administrador'); }
+      else { $('admPin').value = ''; toast(r[1] ? 'PIN incorrecto' : 'No hay PIN todavía: cerrá y volvé a abrir'); }
+    }, function () { toast('Sin conexión: no pude verificar el PIN'); });
+  });
+  (function () {                                   // se abre tocando 5 veces seguidas el texto de arriba, o con Ctrl+Mayús+A
+    var n = 0, t = 0;
+    $('estado').addEventListener('click', function () {
+      var ahora = Date.now(); n = ahora - t < 1500 ? n + 1 : 1; t = ahora;
+      if (n >= 5) { n = 0; abrirAdmin(); }
+    });
+    document.addEventListener('keydown', function (e) { if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) { e.preventDefault(); abrirAdmin(); } });
+  })();
+
   /* ---------- botón "atrás" del celular: cierra lo último que abriste en vez de salir de la app ---------- */
   function atras() {                       // true si había algo para cerrar
+    if (!$('admPanel').hidden) { cerrarAdmin(); return true; }
     if (!$('fotoPanel').hidden) { cerrarFoto(); return true; }
     if (!$('tapaPanel').hidden) { cerrarTapa(); return true; }
     if (!$('revPanel').hidden) { cerrarRev(); return true; }
@@ -2002,6 +2117,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (ub && ub.m && m && ub.ses === m.ses) { UBIC = ub.m; UBICPEND = ub.p || {}; }
     if (cn && cn.c && cn.o) { CONTEO = cn.c; ORDEN = cn.o; }
     if (g) { Object.keys(g).forEach(function (k) { CFG[k] = g[k]; }); }
+    aplicarAdmin();
     if (!CFG.dev) { CFG.dev = Math.random().toString(36).slice(2, 6); guardarCfg(); }
     if (m) { MOV = m.movs || []; OVER = m.over || {}; APL = m.apl || {}; NUBE.ses = m.ses || ''; }
     if (c && c.nube && c.filas) {
