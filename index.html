@@ -71,10 +71,10 @@ header .estado b { font-weight: 600; }
   header .in { max-width: 1180px; }
   #vistaBuscar { width: 100%; display: grid; grid-template-columns: minmax(380px, 460px) 1fr; column-gap: 24px; row-gap: 12px; align-items: start; grid-auto-flow: row; }
   #vistaBuscar > * { grid-column: 1; min-width: 0; }
-  #vistaBuscar > #ficha { grid-column: 2; grid-row: 1 / span 12; position: sticky; top: 12px; padding: 22px; gap: 12px; }
+  #vistaBuscar > #ficha { grid-column: 2; grid-row: 1 / span 12; position: sticky; top: 12px; padding: 22px; gap: 12px; height: max(460px, calc(100vh - 165px)); box-sizing: border-box; }
   #vistaBuscar > #resultados { max-height: none; }
   .mini { display: none !important; }
-  #fGrande { display: block; align-self: center; max-width: 100%; max-height: max(220px, calc(100vh - 480px)); object-fit: contain; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.25); background: #fff; }
+  #fGrande { display: block; flex: 1 1 0; min-height: 160px; width: 100%; object-fit: contain; border-radius: 0; background: transparent; box-shadow: none; filter: drop-shadow(0 4px 12px rgba(0,0,0,.3)); }
   #fGrande[hidden] { display: none; }
   #fTapa { display: none; }
   #vistaMov, #vistaNube { width: 100%; max-width: 760px; margin: 0 auto; }
@@ -94,7 +94,7 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--press); border-radius: 12px; padding: 3px; gap: 3px; margin-top: 8px; }
 
-body.consulta .tres, body.consulta #btnScan, body.consulta #btnUbi { display: none !important; }
+body.consulta .tres, body.consulta #btnScan, body.consulta #btnUbi, body.consulta #btnSin { display: none !important; }
 body.consulta #fUbic { pointer-events: none; background: transparent; border-color: transparent; }
 body.consulta #fDep { pointer-events: none; }
 .tabs.dos { grid-template-columns: repeat(2, 1fr); }
@@ -2024,8 +2024,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       return;
     }
     if (k === '/') { enfocarBuscar(); e.preventDefault(); return; }
-    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · + − Ok · Esc quita el filtro'); e.preventDefault(); return; }
+    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · S con stock · + − Ok · Esc quita el filtro'); e.preventDefault(); return; }
     if (k === 'Escape' && FILTRO_AUT) { FILTRO_AUT = ''; FILTRO_AUTNOM = ''; nuevaBusqueda(); e.preventDefault(); return; }
+    if (k === 's' || k === 'S') { $('btnCero').click(); e.preventDefault(); return; }   // S: con Stock
     if (t === 'BUTTON') return;                                          // Enter sobre un botón enfocado lo activa él
     if ((k === 'a' || k === 'A') && sel >= 0) {
       var au = String(S.aut[sel] || '').trim();
@@ -2056,7 +2057,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('tabsBar').className = 'tabs' + (a ? '' : ' dos');
     if (!a && !$('fotoPanel').hidden) cerrarFoto();
     if (!a && !$('vistaMov').hidden) pestana('buscar');
-    if (n === 'consulta') { if (!$('fIn').hidden) { $('fIn').hidden = true; $('fDep').hidden = false; } pend = 0; if (S) pintarFicha(); }
+    if (n === 'consulta') { if (SOLO_SIN) $('btnSin').click(); if (!$('fIn').hidden) { $('fIn').hidden = true; $('fDep').hidden = false; } pend = 0; if (S) pintarFicha(); }
   }
   function hashPin(pin) {
     var txt = 'mrstock:' + CFG.clave + ':' + pin;
