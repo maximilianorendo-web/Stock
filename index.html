@@ -94,6 +94,9 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--press); border-radius: 12px; padding: 3px; gap: 3px; margin-top: 8px; }
 
+body.consulta .tres, body.consulta #btnScan, body.consulta #btnUbi { display: none !important; }
+body.consulta #fUbic { pointer-events: none; background: transparent; border-color: transparent; }
+body.consulta #fDep { pointer-events: none; }
 .tabs.dos { grid-template-columns: repeat(2, 1fr); }
 .tabs button { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 15px; font-weight: 600; padding: 0 4px; min-height: 38px; border-radius: 9px; cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
@@ -372,13 +375,18 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 
 <div id="admPanel" class="panel" hidden>
   <div class="panel-in">
-    <div class="aviso" id="admTit">Modo administrador</div>
+    <div class="aviso" id="admTit">Cambiar de modo</div>
     <div class="nota" id="admTxt"></div>
     <label class="campoc" id="admL">PIN<input id="admPin" type="password" inputmode="numeric" autocomplete="off" maxlength="12"></label>
     <div class="acciones">
       <button class="btn pri" id="admOk" type="button">Entrar</button>
-      <button class="btn" id="admSalir" type="button" hidden>Salir del modo administrador</button>
+      <button class="btn" id="admSalir" type="button" hidden>Volver a modo consulta</button>
       <button class="btn" id="admCerrar" type="button">Cerrar</button>
+    </div>
+    <div id="admCont" class="wrap" style="gap:8px;margin-top:14px" hidden>
+      <div class="nota">PIN de conteo: es el que les das a quienes cuentan. Con ese PIN el teléfono pasa a modo conteo.</div>
+      <label class="campoc">PIN de conteo<input id="admPinC" type="password" inputmode="numeric" autocomplete="off" maxlength="12"></label>
+      <button class="btn" id="admGuardarC" type="button">Guardar PIN de conteo</button>
     </div>
   </div>
 </div>
@@ -869,6 +877,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function editarCant(ini) {
     if (sel < 0 || !S) return;
+    if (!puedeContar()) { sinPermiso(); return; }
     var i = $('fIn'); $('fDep').hidden = true; i.hidden = false;
     i.value = ini != null ? ini : String(S.d1[sel] + pend); i.focus();
     if (ini == null) i.select();
@@ -882,6 +891,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function cambiar(p) {
     if (sel < 0) return;
+    if (!puedeContar()) { sinPermiso(); return; }
     if (S.d1[sel] + pend + p < 0) return;
     pend += p; pintarFicha();
   }
@@ -912,6 +922,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function confirmar() {
     if (sel < 0) return;
+    if (!puedeContar()) { sinPermiso(); return; }
     var m = registrar(sel, pend);
     try { if (navigator.vibrate) navigator.vibrate(35); } catch (e) {}
     toast(pend ? '✓ Dep 1: ' + m.antes + ' → ' + m.ahora : '✓ Contado: Dep 1 ' + m.antes);
@@ -1326,6 +1337,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function editarUbic() {
     if (sel < 0 || !S) return;
+    if (!puedeContar()) { sinPermiso(); return; }
     var v = prompt('Ubicación de “' + S.tit[sel] + '”\n(vacío para borrarla)', ubicDe(sel));
     if (v === null) return;
     v = v.replace(/\s+/g, ' ').trim().slice(0, 40);
@@ -1728,6 +1740,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   });
   function abrirScan() {
     if (!S) { toast('Primero cargá el stock'); return; }
+    if (!puedeContar()) { sinPermiso(); return; }
     crearDetector(function (det) {
     if (!det) { toast('Este navegador no puede leer códigos'); return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function (s) {
@@ -1858,6 +1871,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function pintarBtnUbi() { var b = $('btnUbi'); b.textContent = '📍'; b.title = UBFIJA ? 'Contando en: ' + UBFIJA + ' (tocá para cambiar)' : 'Ubicación donde estás contando'; b.setAttribute('aria-pressed', !!UBFIJA); }
   $('btnUbi').addEventListener('click', function () {
     if (!S) { toast('Primero cargá el stock'); return; }
+    if (!puedeContar()) { sinPermiso(); return; }
     var v = prompt('¿En qué ubicación estás contando?\nSe les pone a todos los libros que cuentes.\n(vacío para dejar de usarla)', UBFIJA);
     if (v === null) return;
     UBFIJA = v.replace(/\s+/g, ' ').trim().slice(0, 40);
@@ -2029,12 +2043,20 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   window.addEventListener('online', function () { if (nubeOn()) { if (NUBE.listo) { bajar(); subirPendientes(); } else conectar(); } });
 
 
-  /* ---------- modo administrador: muestra Movimientos, la foto de estante y las instrucciones de Firebase (solo oculta pantallas; no protege los datos) ---------- */
+  /* ---------- modos: consulta (por defecto) · conteo (PIN de conteo) · administrador (PIN de administrador).
+     Solo oculta pantallas y botones: no protege los datos de la nube. ---------- */
+  function nivel() { return CFG.nivel === 'admin' || CFG.nivel === 'conteo' ? CFG.nivel : (CFG.adm ? 'admin' : 'consulta'); }
+  function puedeContar() { return nivel() !== 'consulta'; }
+  function sinPermiso() { toast('Modo consulta: para contar hace falta el PIN de conteo'); }
+  function ponerNivel(n) { CFG.nivel = n; CFG.adm = n === 'admin'; guardarCfg(); aplicarAdmin(); }
   function aplicarAdmin() {
-    var a = !!CFG.adm;
+    var n = nivel(), a = n === 'admin';
+    document.body.classList.toggle('consulta', n === 'consulta');
     $('tabMov').hidden = !a; $('nComo').hidden = !a; $('btnFoto').hidden = !a;
-    if (!a && !$('fotoPanel').hidden) cerrarFoto(); $('tabsBar').className = 'tabs' + (a ? '' : ' dos');
+    $('tabsBar').className = 'tabs' + (a ? '' : ' dos');
+    if (!a && !$('fotoPanel').hidden) cerrarFoto();
     if (!a && !$('vistaMov').hidden) pestana('buscar');
+    if (n === 'consulta') { if (!$('fIn').hidden) { $('fIn').hidden = true; $('fDep').hidden = false; } pend = 0; if (S) pintarFicha(); }
   }
   function hashPin(pin) {
     var txt = 'mrstock:' + CFG.clave + ':' + pin;
@@ -2046,40 +2068,59 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var h = 5381; for (var i = 0; i < txt.length; i++) h = ((h * 33) ^ txt.charCodeAt(i)) >>> 0;
     return Promise.resolve('d' + h.toString(16));
   }
+  function leerPin(nombre) { return fetch(nubeBase() + '/' + nombre + '.json').then(function (r) { return r.ok ? r.json() : null; }); }
+  function ponerPin(nombre, h) {
+    return fetch(nubeBase() + '/' + nombre + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ h: h }) })
+      .then(function (r) { if (!r.ok) throw new Error('http'); });
+  }
   var ADMNUEVO = false;
   function abrirAdmin() {
-    $('admPin').value = '';
-    $('admSalir').hidden = !CFG.adm; $('admL').hidden = !!CFG.adm; $('admOk').hidden = !!CFG.adm;
-    $('admTit').textContent = CFG.adm ? 'Sos administrador' : 'Modo administrador';
-    $('admTxt').textContent = CFG.adm ? 'Ves Movimientos, las fotos de estante y las instrucciones de Firebase en este equipo.' : (nubeOn() ? 'Escribí el PIN.' : 'Primero conectá la nube, para poder verificar el PIN.');
-    ADMNUEVO = false;
+    var n = nivel();
+    $('admPin').value = ''; $('admPinC').value = ''; ADMNUEVO = false;
+    $('admOk').textContent = 'Entrar';
+    $('admTit').textContent = n === 'admin' ? 'Sos administrador' : n === 'conteo' ? 'Modo conteo' : 'Modo consulta';
+    $('admSalir').hidden = n === 'consulta';
+    $('admL').hidden = n === 'admin'; $('admOk').hidden = n === 'admin';
+    $('admCont').hidden = n !== 'admin';
+    $('admTxt').textContent = n === 'admin' ? 'Ves todo: Movimientos, fotos de estante y las instrucciones de Firebase.'
+      : !nubeOn() ? 'Primero conectá la nube, para poder verificar el PIN.'
+      : n === 'conteo' ? 'Podés contar. Con el PIN de administrador pasás a administrador.' : 'Solo consulta. Escribí un PIN para cambiar de modo.';
     $('admPanel').hidden = false;
-    if (!CFG.adm && nubeOn()) {
-      fetch(nubeBase() + '/admin.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+    if (n !== 'admin' && nubeOn()) {
+      leerPin('admin').then(function (d) {
         if (!$('admPanel').hidden && !d) { ADMNUEVO = true; $('admTxt').textContent = 'Todavía no hay PIN de administrador. Elegí uno (4 a 12 números).'; $('admOk').textContent = 'Guardar PIN'; }
       }, function () {});
-      $('admOk').textContent = 'Entrar'; $('admPin').focus();
+      $('admPin').focus();
     }
   }
-  function cerrarAdmin() { $('admPanel').hidden = true; $('admPin').value = ''; }
+  function cerrarAdmin() { $('admPanel').hidden = true; $('admPin').value = ''; $('admPinC').value = ''; }
   $('admCerrar').addEventListener('click', cerrarAdmin);
-  $('admSalir').addEventListener('click', function () { CFG.adm = false; guardarCfg(); aplicarAdmin(); cerrarAdmin(); toast('Saliste del modo administrador'); });
+  $('admSalir').addEventListener('click', function () { ponerNivel('consulta'); cerrarAdmin(); toast('Modo consulta'); });
   $('admPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('admOk').click(); } });
+  $('admPinC').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('admGuardarC').click(); } });
   $('admOk').addEventListener('click', function () {
     var pin = $('admPin').value.trim();
     if (!nubeOn()) { toast('Primero conectá la nube'); return; }
     if (ADMNUEVO) {
       if (!/^[0-9]{4,12}$/.test(pin)) { toast('El PIN: de 4 a 12 números'); return; }
-      hashPin(pin).then(function (h) {
-        return fetch(nubeBase() + '/admin.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ h: h }) }).then(function (r) { if (!r.ok) throw new Error('http'); return true; });
-      }).then(function () { CFG.adm = true; guardarCfg(); aplicarAdmin(); cerrarAdmin(); toast('PIN guardado · modo administrador'); }, function () { toast('No pude guardar el PIN (sin conexión)'); });
+      hashPin(pin).then(function (h) { return ponerPin('admin', h); })
+        .then(function () { ponerNivel('admin'); cerrarAdmin(); toast('PIN guardado · modo administrador'); }, function () { toast('No pude guardar el PIN (sin conexión)'); });
       return;
     }
     if (!pin) return;
-    Promise.all([hashPin(pin), fetch(nubeBase() + '/admin.json').then(function (r) { return r.ok ? r.json() : null; })]).then(function (r) {
-      if (r[1] && r[1].h === r[0]) { CFG.adm = true; guardarCfg(); aplicarAdmin(); cerrarAdmin(); toast('Modo administrador'); }
+    Promise.all([hashPin(pin), leerPin('admin'), leerPin('conteo')]).then(function (r) {
+      if (r[1] && r[1].h === r[0]) { ponerNivel('admin'); cerrarAdmin(); toast('Modo administrador'); }
+      else if (r[2] && r[2].h === r[0]) { ponerNivel('conteo'); cerrarAdmin(); toast('Modo conteo'); }
       else { $('admPin').value = ''; toast(r[1] ? 'PIN incorrecto' : 'No hay PIN todavía: cerrá y volvé a abrir'); }
     }, function () { toast('Sin conexión: no pude verificar el PIN'); });
+  });
+  $('admGuardarC').addEventListener('click', function () {
+    var pin = $('admPinC').value.trim();
+    if (!/^[0-9]{4,12}$/.test(pin)) { toast('El PIN: de 4 a 12 números'); return; }
+    Promise.all([hashPin(pin), leerPin('admin')]).then(function (r) {
+      if (r[1] && r[1].h === r[0]) { toast('Tiene que ser distinto al de administrador'); return; }
+      return ponerPin('conteo', r[0]).then(function () { $('admPinC').value = ''; toast('PIN de conteo guardado'); });
+    }).catch(function () { toast('No pude guardar el PIN (sin conexión)'); });
   });
   (function () {                                   // se abre tocando 5 veces seguidas el texto de arriba, o con Ctrl+Mayús+A
     var n = 0, t = 0;
