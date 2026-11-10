@@ -95,10 +95,12 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .dep .nuevo { font-size: 24px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .dep .nuevo.baja { color: var(--bad); }
 #ficha { touch-action: pan-y; will-change: transform; }
-.fomini { display: flex; flex-wrap: wrap; gap: 8px; }
-.fomini .fm { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; background: #ddd; }
-.fomini .fm img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.fomini .fm button { position: absolute; top: 0; right: 0; width: 26px; height: 26px; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 16px; line-height: 1; border-radius: 0 0 0 8px; }
+.fofilas { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.fofila { display: flex; align-items: center; gap: 8px; }
+.fofila input { width: 64px; padding: 9px 8px; font-size: 16px; text-align: center; text-transform: uppercase; border: 1px solid #c9ccd6; border-radius: 8px; }
+.fofila .fcam { width: 44px; height: 40px; border: 1px solid #c9ccd6; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: inherit; }
+.fofila .fcnt { font-size: 13px; opacity: .7; }
+.fofila .fcnt.ok { opacity: 1; font-weight: 600; }
 .fcuerpo { display: flex; align-items: center; gap: 12px; }
 .fdatos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .mini { flex: none; height: 128px; max-width: 40%; width: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25); background: #fff; cursor: pointer; }
@@ -335,11 +337,10 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 <div id="fotoPanel" class="panel" hidden>
   <div class="panel-in">
     <div class="aviso">Foto de estante</div>
-    <label class="campoc">Ubicación de estos libros<input id="foU" type="text" list="foLista" autocomplete="off" autocapitalize="sentences" maxlength="40" placeholder="Lumen 1A"></label>
+    <label class="campoc">Encabezado (estante o sector)<input id="foU" type="text" list="foLista" autocomplete="off" autocapitalize="sentences" maxlength="30" placeholder="Lumen 1"></label>
     <datalist id="foLista"></datalist>
-    <button class="btn" id="foElegir" type="button">Sacar o elegir fotos</button>
+    <div id="foFilas" class="fofilas"></div>
     <input type="file" id="foArchivo" accept="image/*" multiple hidden>
-    <div id="foMini" class="fomini"></div>
     <div id="foEstado" class="nota"></div>
     <div class="acciones">
       <button class="btn pri" id="foSubir" type="button">Subir</button>
@@ -1343,16 +1344,26 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       }
     });
   }
+  var FOFILAS = 7, FOFILA = 0;
+  var CAMARA = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.5h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.2" r="3.6"/></svg>';
   function pintarFotoMini() {
-    var c = $('foMini'); c.innerHTML = '';
-    FOTOSEL.forEach(function (f, i) {
-      var d = document.createElement('div'); d.className = 'fm';
-      var im = document.createElement('img'); im.src = f.url; im.alt = 'Foto ' + (i + 1);
-      var x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Quitar la foto ' + (i + 1));
-      x.addEventListener('click', function () { FOTOSEL.splice(i, 1); pintarFotoMini(); });
-      d.appendChild(im); d.appendChild(x); c.appendChild(d);
-    });
-    $('foSubir').disabled = !FOTOSEL.length;
+    var c = $('foFilas');
+    if (!c.children.length) {
+      for (var i = 0; i < FOFILAS; i++) (function (i) {
+        var d = document.createElement('div'); d.className = 'fofila';
+        var inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 3; inp.placeholder = String.fromCharCode(65 + i); inp.autocapitalize = 'characters'; inp.autocomplete = 'off'; inp.setAttribute('aria-label', 'Letra ' + (i + 1));
+        var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'fcam'; bt.innerHTML = CAMARA; bt.setAttribute('aria-label', 'Fotos de la fila ' + (i + 1));
+        var n = document.createElement('span'); n.className = 'fcnt'; n.id = 'foN' + i;
+        bt.addEventListener('click', function () { FOFILA = i; $('foArchivo').click(); });
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); bt.click(); } });
+        d.appendChild(inp); d.appendChild(bt); d.appendChild(n); c.appendChild(d);
+      })(i);
+    }
+    for (var k = 0; k < FOFILAS; k++) {
+      var m = (FOTOSEL[k] || []).length, e = $('foN' + k);
+      e.textContent = m ? m + (m === 1 ? ' foto' : ' fotos') : 'sin fotos'; e.className = 'fcnt' + (m ? ' ok' : '');
+    }
+    $('foSubir').disabled = !FOTOSEL.some(function (f) { return f && f.length; });
   }
   function pintarFotoEstado(extra) {
     var t = FOTOQ.length ? 'En cola para subir: ' + FOTOQ.length + (FOTOQ.length === 1 ? ' foto' : ' fotos') + (nubeOn() ? '' : ' (falta conectar la nube)') + '.' : '';
@@ -1364,30 +1375,37 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var set = {};
     if (S) { for (var i = 0; i < S.pos.length && Object.keys(set).length < 300; i++) { var u = ubicDe(i); if (u) set[u] = 1; } }
     Object.keys(set).sort().forEach(function (u) { var o = document.createElement('option'); o.value = u; dl.appendChild(o); });
-    FOTOSEL = []; pintarFotoMini(); pintarFotoEstado();
+    FOTOSEL = []; $('foFilas').querySelectorAll('input').forEach(function (x) { x.value = ''; }); pintarFotoMini(); pintarFotoEstado();
     $('fotoPanel').hidden = false; $('foU').focus();
   }
-  function cerrarFoto() { $('fotoPanel').hidden = true; FOTOSEL.forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); FOTOSEL = []; }
+  function cerrarFoto() { $('fotoPanel').hidden = true; FOTOSEL.forEach(function (fs) { (fs || []).forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); }); FOTOSEL = []; }
   $('btnFoto').addEventListener('click', abrirFoto);
   $('foCerrar').addEventListener('click', cerrarFoto);
-  $('foElegir').addEventListener('click', function () { $('foArchivo').click(); });
   $('foArchivo').addEventListener('change', function () {
-    var arch = Array.prototype.slice.call(this.files || []); this.value = '';
+    var arch = Array.prototype.slice.call(this.files || []), fila = FOFILA; this.value = '';
     if (!arch.length) return;
     $('foEstado').textContent = 'Preparando ' + arch.length + (arch.length === 1 ? ' foto…' : ' fotos…');
     arch.reduce(function (p, f) {
-      return p.then(function () { return reducirFoto(f).then(function (r) { FOTOSEL.push(r); pintarFotoMini(); }, function () {}); });
-    }, Promise.resolve()).then(function () { pintarFotoEstado(); });
+      return p.then(function () { return reducirFoto(f).then(function (r) { (FOTOSEL[fila] = FOTOSEL[fila] || []).push(r); pintarFotoMini(); }, function () {}); });
+    }, Promise.resolve()).then(function () { pintarFotoEstado(); var sig = $('foFilas').querySelectorAll('input')[fila + 1]; if (sig && !sig.value) sig.focus(); });
   });
   $('foSubir').addEventListener('click', function () {
-    var u = $('foU').value.replace(/\s+/g, ' ').trim().slice(0, 40);
-    if (!u) { toast('Escribí la ubicación'); $('foU').focus(); return; }
-    if (!FOTOSEL.length) return;
-    var t = Date.now(), n = FOTOSEL.length;
-    FOTOSEL.forEach(function (f, i) {
-      FOTOQ.push({ id: 'f' + t.toString(36) + i + Math.random().toString(36).slice(2, 5), u: u, q: CFG.nombre || '', t: t + i, w: f.w, h: f.h, img: f.img });
+    var cab = $('foU').value.replace(/\s+/g, ' ').trim().slice(0, 30), ins = $('foFilas').querySelectorAll('input'), lista = [];
+    for (var i = 0; i < FOFILAS; i++) {
+      var fs = FOTOSEL[i] || []; if (!fs.length) continue;
+      var letra = ins[i].value.replace(/\s+/g, '').toUpperCase();
+      var u = cab + letra;
+      if (!u) { toast('Escribí el encabezado o la letra de la fila ' + (i + 1)); return; }
+      lista.push({ u: u, fs: fs });
+    }
+    if (!lista.length) return;
+    var t = Date.now(), n = 0;
+    lista.forEach(function (g) {
+      g.fs.forEach(function (f) {
+        FOTOQ.push({ id: 'f' + t.toString(36) + (n++) + Math.random().toString(36).slice(2, 5), u: g.u, q: CFG.nombre || '', t: t + n, w: f.w, h: f.h, img: f.img });
+      });
     });
-    guardarFotoQ().then(function () { cerrarFoto(); toast('Subiendo ' + n + (n === 1 ? ' foto' : ' fotos') + ' de «' + u + '»…'); subirFotos(); });
+    guardarFotoQ().then(function () { cerrarFoto(); toast('Subiendo ' + n + (n === 1 ? ' foto' : ' fotos') + '…'); subirFotos(); });
   });
   function subirFotos() {
     if (fotoSubiendo || !nubeOn() || !FOTOQ.length) return Promise.resolve();
