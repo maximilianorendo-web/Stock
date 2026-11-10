@@ -603,12 +603,35 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     else { b.textContent = 'Buscar'; p.textContent = 'Resultados'; }
     d.appendChild(b); d.appendChild(p); r.appendChild(d);
   }
+  function isbnAlterno(d) {                          // ISBN-10 <-> ISBN-13
+    var i, t = 0;
+    if (/^\d{9}[\dX]$/.test(d)) {
+      var b = '978' + d.slice(0, 9);
+      for (i = 0; i < 12; i++) t += (+b[i]) * (i % 2 ? 3 : 1);
+      return b + ((10 - t % 10) % 10);
+    }
+    if (/^978\d{10}$/.test(d)) {
+      var c = d.slice(3, 12);
+      for (i = 0; i < 9; i++) t += (+c[i]) * (10 - i);
+      var r = (11 - t % 11) % 11;
+      return c + (r === 10 ? 'X' : r);
+    }
+    return '';
+  }
   function buscar(q) {
     if (!S) return [];
     var dig = q.replace(/[\s-]/g, '');
-    if (/^\d{8,}$/.test(dig)) {
-      var k = S.porCod.get(codNorm(dig));
-      return k == null ? [] : [k];
+    if (/^\d{6,}[\dxX]?$/.test(dig)) {
+      var cn = codNorm(dig), k = S.porCod.get(cn);
+      if (k == null) { var alt = isbnAlterno(cn); if (alt) k = S.porCod.get(alt); }
+      if (k != null) return [k];
+      if (dig.length >= 6) {                         // parte de un ISBN o código de barras: por el final o por el principio
+        var hit = {}, lista = [];
+        S.porCod.forEach(function (v, key) { if (!hit[v] && (key.slice(-cn.length) === cn || key.indexOf(cn) === 0)) { hit[v] = 1; lista.push(v); } });
+        if (S.porCodigo.has(dig) && !hit[S.porCodigo.get(dig)]) lista.push(S.porCodigo.get(dig));
+        if (lista.length) { lista.sort(function (a, b) { return S.titN[a] < S.titN[b] ? -1 : S.titN[a] > S.titN[b] ? 1 : a - b; }); return lista.slice(0, 60); }
+      }
+      if (dig.length >= 8) return [];
     }
     var qn = norm(q);
     if (!qn && !hayFiltro()) return [];
