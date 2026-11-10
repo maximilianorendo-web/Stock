@@ -95,6 +95,10 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .dep .nuevo { font-size: 24px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .dep .nuevo.baja { color: var(--bad); }
 #ficha { touch-action: pan-y; will-change: transform; }
+.fomini { display: flex; flex-wrap: wrap; gap: 8px; }
+.fomini .fm { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; background: #ddd; }
+.fomini .fm img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fomini .fm button { position: absolute; top: 0; right: 0; width: 26px; height: 26px; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 16px; line-height: 1; border-radius: 0 0 0 8px; }
 .fcuerpo { display: flex; align-items: center; gap: 12px; }
 .fdatos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .mini { flex: none; height: 128px; max-width: 40%; width: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25); background: #fff; cursor: pointer; }
@@ -244,6 +248,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <button class="sin" id="btnSin" type="button" aria-pressed="false" title="Mostrar solo los libros que todavía no se contaron">Sin contar</button>
       <button class="sin" id="btnCero" type="button" aria-pressed="false" title="Mostrar solo los libros con stock en el sistema">Con stock</button>
       <button class="sin" id="btnUbi" type="button" aria-pressed="false" aria-label="Ubicación fija" title="Ubicación donde estás contando: se les pone a todos los libros que cuentes">📍</button>
+      <button class="sin" id="btnFoto" type="button" aria-label="Foto de estante" title="Foto de estante: subir fotos de los lomos para ponerles ubicación"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M3 11.5h18"/><path d="M5.5 11.5V6M8.5 11.5V4M11.5 11.5V7M14.5 11.5V5.5"/><path d="M5.5 21v-5M9 21v-7M12.5 21v-4.5M16 21v-6M19 21v-4"/></svg></button>
       <button class="sin orden" id="btnOrden" type="button" aria-pressed="false" aria-label="Ordenar por autor y título" title="Ordenar por autor y título"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M4 12h6M4 17h3"/><path d="M17 5v14M14 16l3 3 3-3"/></svg></button>
     </div>
     <div id="barras" class="barras" hidden></div>
@@ -326,6 +331,22 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     </details>
   </section>
 </main>
+
+<div id="fotoPanel" class="panel" hidden>
+  <div class="panel-in">
+    <div class="aviso">Foto de estante</div>
+    <label class="campoc">Ubicación de estos libros<input id="foU" type="text" list="foLista" autocomplete="off" autocapitalize="sentences" maxlength="40" placeholder="Lumen 1A"></label>
+    <datalist id="foLista"></datalist>
+    <button class="btn" id="foElegir" type="button">Sacar o elegir fotos</button>
+    <input type="file" id="foArchivo" accept="image/*" multiple hidden>
+    <div id="foMini" class="fomini"></div>
+    <div id="foEstado" class="nota"></div>
+    <div class="acciones">
+      <button class="btn pri" id="foSubir" type="button">Subir</button>
+      <button class="btn" id="foCerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
 
 <div id="tapaPanel" class="panel" hidden>
   <div class="panel-in">
@@ -1292,7 +1313,96 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     return fetch(nubeBase() + '/presencia/' + encodeURIComponent(CFG.dev || 'x') + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ n: CFG.nombre || '(sin nombre)', t: Date.now(), u: u, s: sub }) }).catch(function () {});
   }
-  setInterval(function () { latir(); bajarUbic(); bajarBase(); }, 30000);
+
+  /* ---------- foto de estante: se suben a la nube y MR System las lee (OCR) para ponerles ubicación ---------- */
+  var FOTOQ = [], FOTOSEL = [], fotoSubiendo = false;
+  leer('fotos').then(function (a) { if (Array.isArray(a)) FOTOQ = a; pintarFotoEstado(); subirFotos(); });
+  function guardarFotoQ() { return guardar('fotos', FOTOQ); }
+  function reducirFoto(file) {
+    return new Promise(function (ok, no) {
+      function dibujar(src, w, h) {
+        var k = Math.min(1, 2400 / Math.max(w, h)), c = document.createElement('canvas');
+        c.width = Math.round(w * k); c.height = Math.round(h * k);
+        c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+        c.toBlob(function (b) {
+          if (!b) { no(new Error('foto')); return; }
+          var fr = new FileReader();
+          fr.onload = function () { ok({ img: String(fr.result).split(',')[1], w: c.width, h: c.height, url: URL.createObjectURL(b) }); };
+          fr.onerror = function () { no(fr.error); };
+          fr.readAsDataURL(b);
+        }, 'image/jpeg', 0.82);
+      }
+      if (window.createImageBitmap) {
+        createImageBitmap(file, { imageOrientation: 'from-image' }).then(function (bm) { dibujar(bm, bm.width, bm.height); }, function () { viejo(); });
+      } else viejo();
+      function viejo() {
+        var im = new Image(), u = URL.createObjectURL(file);
+        im.onload = function () { dibujar(im, im.naturalWidth, im.naturalHeight); URL.revokeObjectURL(u); };
+        im.onerror = function () { no(new Error('foto')); };
+        im.src = u;
+      }
+    });
+  }
+  function pintarFotoMini() {
+    var c = $('foMini'); c.innerHTML = '';
+    FOTOSEL.forEach(function (f, i) {
+      var d = document.createElement('div'); d.className = 'fm';
+      var im = document.createElement('img'); im.src = f.url; im.alt = 'Foto ' + (i + 1);
+      var x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Quitar la foto ' + (i + 1));
+      x.addEventListener('click', function () { FOTOSEL.splice(i, 1); pintarFotoMini(); });
+      d.appendChild(im); d.appendChild(x); c.appendChild(d);
+    });
+    $('foSubir').disabled = !FOTOSEL.length;
+  }
+  function pintarFotoEstado(extra) {
+    var t = FOTOQ.length ? 'En cola para subir: ' + FOTOQ.length + (FOTOQ.length === 1 ? ' foto' : ' fotos') + (nubeOn() ? '' : ' (falta conectar la nube)') + '.' : '';
+    $('foEstado').textContent = [extra, t].filter(Boolean).join(' ');
+  }
+  function abrirFoto() {
+    if (!nubeOn()) { toast('Primero conectá la nube'); return; }
+    var dl = $('foLista'); dl.innerHTML = '';
+    var set = {};
+    if (S) { for (var i = 0; i < S.pos.length && Object.keys(set).length < 300; i++) { var u = ubicDe(i); if (u) set[u] = 1; } }
+    Object.keys(set).sort().forEach(function (u) { var o = document.createElement('option'); o.value = u; dl.appendChild(o); });
+    FOTOSEL = []; pintarFotoMini(); pintarFotoEstado();
+    $('fotoPanel').hidden = false; $('foU').focus();
+  }
+  function cerrarFoto() { $('fotoPanel').hidden = true; FOTOSEL.forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); FOTOSEL = []; }
+  $('btnFoto').addEventListener('click', abrirFoto);
+  $('foCerrar').addEventListener('click', cerrarFoto);
+  $('foElegir').addEventListener('click', function () { $('foArchivo').click(); });
+  $('foArchivo').addEventListener('change', function () {
+    var arch = Array.prototype.slice.call(this.files || []); this.value = '';
+    if (!arch.length) return;
+    $('foEstado').textContent = 'Preparando ' + arch.length + (arch.length === 1 ? ' foto…' : ' fotos…');
+    arch.reduce(function (p, f) {
+      return p.then(function () { return reducirFoto(f).then(function (r) { FOTOSEL.push(r); pintarFotoMini(); }, function () {}); });
+    }, Promise.resolve()).then(function () { pintarFotoEstado(); });
+  });
+  $('foSubir').addEventListener('click', function () {
+    var u = $('foU').value.replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (!u) { toast('Escribí la ubicación'); $('foU').focus(); return; }
+    if (!FOTOSEL.length) return;
+    var t = Date.now(), n = FOTOSEL.length;
+    FOTOSEL.forEach(function (f, i) {
+      FOTOQ.push({ id: 'f' + t.toString(36) + i + Math.random().toString(36).slice(2, 5), u: u, q: CFG.nombre || '', t: t + i, w: f.w, h: f.h, img: f.img });
+    });
+    guardarFotoQ().then(function () { cerrarFoto(); toast('Subiendo ' + n + (n === 1 ? ' foto' : ' fotos') + ' de «' + u + '»…'); subirFotos(); });
+  });
+  function subirFotos() {
+    if (fotoSubiendo || !nubeOn() || !FOTOQ.length) return Promise.resolve();
+    fotoSubiendo = true;
+    var hechas = 0;
+    function uno() {
+      if (!FOTOQ.length) return Promise.resolve();
+      var f = FOTOQ[0], put = function (ruta, cuerpo) { return fetch(nubeBase() + ruta + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) }).then(function (r) { if (!r.ok) throw new Error('http'); }); };
+      return put('/fotos/' + f.id, { img: f.img }).then(function () { return put('/fotos_meta/' + f.id, { u: f.u, q: f.q, t: f.t, w: f.w, h: f.h }); })
+        .then(function () { FOTOQ.shift(); hechas++; return guardarFotoQ(); }).then(uno);
+    }
+    return uno().then(function () { if (hechas) toast('✓ ' + hechas + (hechas === 1 ? ' foto subida' : ' fotos subidas')); }, function () {})
+      .then(function () { fotoSubiendo = false; if (!$('fotoPanel').hidden) pintarFotoEstado(); });
+  }
+  setInterval(function () { latir(); bajarUbic(); bajarBase(); subirFotos(); }, 30000);
   setTimeout(function () { latir(); bajarUbic(); bajarBase(); }, 3000);
 
   /* ---------- mensajes de la PC ---------- */
@@ -1821,12 +1931,13 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     else if (e.key === 'Enter') { confirmar(); e.preventDefault(); }
     else if (e.key === '/') { $('q').focus(); e.preventDefault(); }
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); } });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && NUBE.listo) { bajar(); subirPendientes(); } });
   window.addEventListener('online', function () { if (nubeOn()) { if (NUBE.listo) { bajar(); subirPendientes(); } else conectar(); } });
 
   /* ---------- botón "atrás" del celular: cierra lo último que abriste en vez de salir de la app ---------- */
   function atras() {                       // true si había algo para cerrar
+    if (!$('fotoPanel').hidden) { cerrarFoto(); return true; }
     if (!$('tapaPanel').hidden) { cerrarTapa(); return true; }
     if (!$('revPanel').hidden) { cerrarRev(); return true; }
     if (!$('scan').hidden) { cerrarScan(); return true; }
