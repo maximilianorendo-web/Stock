@@ -94,6 +94,7 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .dep .num.cero { color: var(--bad); }
 .dep .nuevo { font-size: 24px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .dep .nuevo.baja { color: var(--bad); }
+#ficha { touch-action: pan-y; will-change: transform; }
 .fcuerpo { display: flex; align-items: center; gap: 12px; }
 .fdatos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .mini { flex: none; height: 128px; max-width: 40%; width: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25); background: #fff; cursor: pointer; }
@@ -126,7 +127,6 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 .barra .bt b { font-weight: 700; }
 .barra .qx { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin: -3px 6px -3px -4px; border-radius: 50%; color: var(--muted); font-size: 18px; line-height: 1; }
 .barra .bt > span:first-child { display: flex; align-items: center; min-width: 0; }
-#chipEdi, #chipAut { display: none !important; }
 .barra .bf { height: 6px; border-radius: 99px; background: var(--line); margin-top: 6px; overflow: hidden; }
 .barra .bf i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
 .sins { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -727,26 +727,59 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!silencioso) { pintarResultados(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   }
   var fichaSel = -2;
-  /* deslizar la ficha: a la izquierda, el libro siguiente de los resultados; a la derecha, el anterior */
+  /* deslizar la ficha: la ficha sigue al dedo; a la izquierda, el libro siguiente de los resultados; a la derecha, el anterior */
   (function () {
-    var x0 = 0, y0 = 0, t0 = 0, vale = false, ficha = $('ficha');
-    ficha.addEventListener('touchstart', function (e) {
-      var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now();
-      vale = e.touches.length === 1 && !/^(INPUT|TEXTAREA)$/.test((e.target.tagName || ''));
-    }, { passive: true });
-    ficha.addEventListener('touchend', function (e) {
-      if (!vale) return; vale = false;
-      var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
-      if (Math.abs(dx) < 70 || Math.abs(dx) < 1.8 * Math.abs(dy) || Date.now() - t0 > 700) return;
-      var i = res.indexOf(sel);
-      if (i < 0 || res.length < 2) return;
+    var ficha = $('ficha'), x0 = 0, y0 = 0, t0 = 0, modo = '', dxAct = 0, ocupado = false;
+    function poner(x, anim) {
+      ficha.style.transition = anim ? 'transform .16s ease-out, opacity .16s ease-out' : 'none';
+      ficha.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      ficha.style.opacity = x ? String(Math.max(0.25, 1 - Math.abs(x) / 420)) : '';
+    }
+    function destino(dx) {                     // libro al que iría, o -1 (también -1 si hay un cambio sin confirmar)
+      var i = res.indexOf(sel); if (i < 0 || res.length < 2) return -1;
       var j = dx < 0 ? i + 1 : i - 1;
-      if (j < 0 || j >= res.length) { toast(dx < 0 ? 'Es el último de los resultados' : 'Es el primero de los resultados'); return; }
-      if (pend) { toast('Primero confirmá con Ok o dejá el cambio en cero'); return; }
-      PAG = Math.floor(j / TAM);
-      elegir(res[j]);
-      toast((j + 1) + ' de ' + res.length);
+      return j < 0 || j >= res.length ? -1 : j;
+    }
+    ficha.addEventListener('touchstart', function (e) {
+      if (ocupado) return;
+      var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); dxAct = 0;
+      modo = e.touches.length === 1 && !/^(INPUT|TEXTAREA)$/.test((e.target.tagName || '')) ? 'espera' : 'no';
     }, { passive: true });
+    ficha.addEventListener('touchmove', function (e) {
+      if (modo === 'no' || ocupado) return;
+      var t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (modo === 'espera') {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        modo = Math.abs(dx) > 1.4 * Math.abs(dy) ? 'arrastre' : 'no';
+        if (modo === 'no') return;
+      }
+      dxAct = dx;
+      poner(destino(dx) < 0 || pend ? dx * 0.25 : dx, false);       // sin libro al que ir (o con cambio pendiente), el dedo cuesta
+    }, { passive: true });
+    function terminar(e) {
+      if (modo !== 'arrastre' || ocupado) { modo = ''; return; }
+      modo = '';
+      var dx = (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : x0 + dxAct) - x0;
+      var rapido = Date.now() - t0 < 350 && Math.abs(dx) > 40;
+      var j = destino(dx);
+      if (Math.abs(dx) < 90 && !rapido) { poner(0, true); return; }
+      if (j < 0) { poner(0, true); toast(dx < 0 ? 'Es el último de los resultados' : 'Es el primero de los resultados'); return; }
+      if (pend) { poner(0, true); toast('Primero confirmá con Ok o dejá el cambio en cero'); return; }
+      ocupado = true;
+      var lado = dx < 0 ? -1 : 1, ancho = Math.max(300, ficha.offsetWidth);
+      poner(lado * ancho * 0.6, true);                                 // la ficha sale hacia un costado
+      setTimeout(function () {
+        PAG = Math.floor(j / TAM);
+        elegir(res[j]);                                                // el libro nuevo entra desde el otro costado
+        poner(-lado * ancho * 0.35, false);
+        void ficha.offsetWidth;
+        poner(0, true);
+        toast((j + 1) + ' de ' + res.length);
+        setTimeout(function () { ocupado = false; ficha.style.transition = ''; }, 180);
+      }, 140);
+    }
+    ficha.addEventListener('touchend', terminar, { passive: true });
+    ficha.addEventListener('touchcancel', function () { modo = ''; poner(0, true); }, { passive: true });
   })();
   function pintarFicha() {
     var f = $('ficha');
@@ -1632,6 +1665,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function pintarBarras() {
     var cont = $('barras'), alcances = [];
+    cont.hidden = true; cont.innerHTML = ''; return;      // la barra de avance está apagada (no se muestra); los filtros se quitan con los chips
     if (S && FILTRO_EDI) alcances.push({ rot: 'Editorial ' + FILTRO_NOM, f: function (i) { return S.ediN[i] === FILTRO_EDI; }, mas: function () { SOLO_SIN = true; }, quitar: function () { FILTRO_EDI = ''; FILTRO_NOM = ''; } });
     if (S && FILTRO_AUT) { if (!S.autN) S.autN = S.aut.map(norm); alcances.push({ rot: 'Autor ' + FILTRO_AUTNOM, f: function (i) { return S.autN[i].indexOf(FILTRO_AUT) >= 0; }, mas: function () { SOLO_SIN = true; }, quitar: function () { FILTRO_AUT = ''; FILTRO_AUTNOM = ''; } }); }
     if (S && UBFIJA) { var un = UBFIJA.toLowerCase(); alcances.push({ rot: '📍 ' + UBFIJA, f: function (i) { return ubicDe(i).toLowerCase() === un; }, mas: function () { FILTRO_UBI = un; FILTRO_UBINOM = UBFIJA; SOLO_SIN = true; } }); }
