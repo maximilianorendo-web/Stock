@@ -270,7 +270,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <button class="sin" id="btnSin" type="button" aria-pressed="false" title="Mostrar solo los libros que todavía no se contaron">Sin contar</button>
       <button class="sin" id="btnCero" type="button" aria-pressed="false" title="Mostrar solo los libros con stock en el sistema">Con stock</button>
       <button class="sin" id="btnUbi" type="button" aria-pressed="false" aria-label="Ubicación fija" title="Ubicación donde estás contando: se les pone a todos los libros que cuentes">📍</button>
-      <button class="sin" id="btnFoto" type="button" aria-label="Foto de estante" title="Foto de estante: subir fotos de los lomos para ponerles ubicación"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M3 11.5h18"/><path d="M5.5 11.5V6M8.5 11.5V4M11.5 11.5V7M14.5 11.5V5.5"/><path d="M5.5 21v-5M9 21v-7M12.5 21v-4.5M16 21v-6M19 21v-4"/></svg></button>
+      <button class="sin" id="btnFoto" type="button" hidden aria-label="Foto de estante" title="Foto de estante: subir fotos de los lomos para ponerles ubicación"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M3 11.5h18"/><path d="M5.5 11.5V6M8.5 11.5V4M11.5 11.5V7M14.5 11.5V5.5"/><path d="M5.5 21v-5M9 21v-7M12.5 21v-4.5M16 21v-6M19 21v-4"/></svg></button>
       <button class="sin orden" id="btnOrden" type="button" aria-pressed="false" aria-label="Ordenar por autor y título" title="Ordenar por autor y título"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M4 12h6M4 17h3"/><path d="M17 5v14M14 16l3 3 3-3"/></svg></button>
     </div>
     <div id="barras" class="barras" hidden></div>
@@ -2029,10 +2029,11 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   window.addEventListener('online', function () { if (nubeOn()) { if (NUBE.listo) { bajar(); subirPendientes(); } else conectar(); } });
 
 
-  /* ---------- modo administrador: muestra Movimientos y las instrucciones de Firebase (solo oculta pantallas; no protege los datos) ---------- */
+  /* ---------- modo administrador: muestra Movimientos, la foto de estante y las instrucciones de Firebase (solo oculta pantallas; no protege los datos) ---------- */
   function aplicarAdmin() {
     var a = !!CFG.adm;
-    $('tabMov').hidden = !a; $('nComo').hidden = !a; $('tabsBar').className = 'tabs' + (a ? '' : ' dos');
+    $('tabMov').hidden = !a; $('nComo').hidden = !a; $('btnFoto').hidden = !a;
+    if (!a && !$('fotoPanel').hidden) cerrarFoto(); $('tabsBar').className = 'tabs' + (a ? '' : ' dos');
     if (!a && !$('vistaMov').hidden) pestana('buscar');
   }
   function hashPin(pin) {
@@ -2050,7 +2051,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('admPin').value = '';
     $('admSalir').hidden = !CFG.adm; $('admL').hidden = !!CFG.adm; $('admOk').hidden = !!CFG.adm;
     $('admTit').textContent = CFG.adm ? 'Sos administrador' : 'Modo administrador';
-    $('admTxt').textContent = CFG.adm ? 'Ves Movimientos y las instrucciones de Firebase en este equipo.' : (nubeOn() ? 'Escribí el PIN.' : 'Primero conectá la nube, para poder verificar el PIN.');
+    $('admTxt').textContent = CFG.adm ? 'Ves Movimientos, las fotos de estante y las instrucciones de Firebase en este equipo.' : (nubeOn() ? 'Escribí el PIN.' : 'Primero conectá la nube, para poder verificar el PIN.');
     ADMNUEVO = false;
     $('admPanel').hidden = false;
     if (!CFG.adm && nubeOn()) {
