@@ -4,7 +4,7 @@
 <meta name="theme-color" content="#1b2437">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Stock</title>
 <style>
 /* Idea: una sola pantalla de trabajo, pensada para el pulgar. Buscar arriba, el libro con su Dep 1 enorme en el medio,
@@ -486,7 +486,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('btnSin').setAttribute('aria-pressed', 'false'); $('btnCero').setAttribute('aria-pressed', 'false');
   }
   var sel = -1, pend = 0, res = [], toastT = null;
-  var PEDIDOS = [], PEDABIERTO = null, PEDVOLVER = null;   // pedidos recibidos/enviados: [{id, t, items:[[cod,cant]], hechos:{cod:1}, de, para, mio}]
+  var PEDBORR = {}, PEDIDOS = [], PEDABIERTO = null, PEDVOLVER = null;   // pedidos recibidos/enviados: [{id, t, items:[[cod,cant]], hechos:{cod:1}, de, para, mio}]
   var PAG = 0, PAG_ULT = '', TAM = 15;     // resultados por página
   var CONTEO = {}, ORDEN = [], ULTLIB = null;    // conteo por escáner: código -> {cod, tit, n}
 
@@ -1565,10 +1565,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function pedCompleto(p) { return p.items.length && p.items.every(function (x) { return p.hechos && p.hechos[x[0]]; }); }
   function agregarPedido(m, mio) {                    // true si era nuevo
     var id = m.id || ('p' + Date.now().toString(36));
-    if (PEDIDOS.some(function (p) { return p.id === id; })) return false;
+    if (PEDBORR[id] || PEDIDOS.some(function (p) { return p.id === id; })) return false;
+    if (PEDIDOS.length >= 40 && (m.t || 0) < PEDIDOS[0].t) return false;
     var it = limpiarItems(m.pedido);
     if (!it.length) return false;
     PEDIDOS.push({ id: id, t: m.t || Date.now(), items: it, hechos: {}, de: m.de || '', para: m.paraNombre || '', mio: !!mio });
+    PEDIDOS.sort(function (a, b) { return a.t - b.t; });
     guardarPedidos();
     return true;
   }
@@ -1638,7 +1640,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var del = document.createElement('button'); del.type = 'button'; del.className = 'btn ancho'; del.style.marginTop = '12px'; del.textContent = 'Borrar este pedido';
     del.addEventListener('click', function () {
       if (!confirm('¿Borrar este pedido de este teléfono?')) return;
-      PEDIDOS = PEDIDOS.filter(function (x) { return x.id !== p.id; }); PEDABIERTO = null; guardarPedidos(); pintarPedidos();
+      PEDIDOS = PEDIDOS.filter(function (x) { return x.id !== p.id; }); PEDBORR[p.id] = 1; guardar('pedborr', PEDBORR); PEDABIERTO = null; guardarPedidos(); pintarPedidos();
     });
     c.appendChild(del);
   }
@@ -1675,9 +1677,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       var ids = Object.keys(d).sort(function (a, b) { return (d[a].t || 0) - (d[b].t || 0); });
       var yo = normNombre(CFG.nombre);
       ids.forEach(function (id) {
+        var m = d[id] || {};
+        if (m.pedido && (!m.para || m.para === yo)) { m.id = id; if (agregarPedido(m, false) && $('vistaPedidos') && !$('vistaPedidos').hidden && !PEDABIERTO) pintarPedidos(); }   // los pedidos se guardan aunque el aviso ya se haya visto
         if (MSGV[id]) return;
         MSGV[id] = 1;
-        var m = d[id] || {};
         if (!MSGINI) return;                        // la primera vez no se muestran los viejos
         if (m.para && m.para !== yo) return;
         if (m.texto) { m.id = id; if (m.pedido) agregarPedido(m, false); MSGQ.push(m); }
@@ -2381,9 +2384,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   } catch (e) {}
 
   pintarVacio();
-  Promise.all([leer('csv'), leer('mov'), leer('cfg'), leer('conteo'), leer('ubic'), leer('pedidos')]).then(function (r) {
+  Promise.all([leer('csv'), leer('mov'), leer('cfg'), leer('conteo'), leer('ubic'), leer('pedidos'), leer('pedborr')]).then(function (r) {
     var c = r[0], m = r[1], g = r[2], cn = r[3], ub = r[4];
     if (r[5] && r[5].length) PEDIDOS = r[5];
+    if (r[6] && typeof r[6] === 'object') PEDBORR = r[6];
     if (ub && ub.m && m && ub.ses === m.ses) { UBIC = ub.m; UBICPEND = ub.p || {}; }
     if (cn && cn.c && cn.o) { CONTEO = cn.c; ORDEN = cn.o; }
     if (g) { Object.keys(g).forEach(function (k) { CFG[k] = g[k]; }); }
