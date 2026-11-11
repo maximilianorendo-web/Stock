@@ -94,6 +94,8 @@ header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--press); border-radius: 12px; padding: 3px; gap: 3px; margin-top: 8px; }
 
+#hiLista { max-height: 55vh; overflow-y: auto; }
+#hiLista .mov.des .t, #hiLista .mov.des .m, #hiLista .mov.des .dl { text-decoration: line-through; opacity: .55; }
 body.consulta .tres, body.consulta #btnScan, body.consulta #btnUbi, body.consulta #btnSin { display: none !important; }
 body.consulta #fUbic { pointer-events: none; background: transparent; border-color: transparent; }
 body.consulta #fDep { pointer-events: none; }
@@ -291,7 +293,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       </div>
       <div class="otros"><span id="fDep11"></span><span id="fPvp"></span><span id="fCod"></span></div>
       </div><img id="fMini" class="mini" alt="Tapa" referrerpolicy="no-referrer" hidden></div>
-      <div class="ubic"><button type="button" class="btn chico" id="fUbic" aria-label="Ubicación del libro"></button> <button type="button" class="btn chico" id="fTapa">Tapa</button></div>
+      <div class="ubic"><button type="button" class="btn chico" id="fUbic" aria-label="Ubicación del libro"></button> <button type="button" class="btn chico" id="fTapa">Tapa</button> <button type="button" class="btn chico" id="fHist" aria-label="Movimientos de este libro" title="Movimientos de este libro (H)" hidden>🕘 Movimientos</button></div>
       <div class="tres">
         <button type="button" class="menos" id="bMenos" aria-label="Restar uno">−</button>
         <button type="button" class="ok" id="bOk" aria-label="Confirmar el cambio">Ok</button>
@@ -370,6 +372,15 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <button class="btn pri" id="foSubir" type="button">Subir</button>
       <button class="btn" id="foCerrar" type="button">Cerrar</button>
     </div>
+  </div>
+</div>
+
+<div id="histPanel" class="panel" hidden>
+  <div class="panel-in">
+    <div class="aviso" id="hiTit">Movimientos</div>
+    <div class="nota" id="hiRes"></div>
+    <div id="hiLista" class="lista"></div>
+    <div class="acciones"><button class="btn" id="hiCerrar" type="button">Cerrar</button></div>
   </div>
 </div>
 
@@ -2007,7 +2018,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function enfocarBuscar() { setTimeout(function () { var q = $('q'); q.focus(); q.select(); }, 0); }   // después del evento: así la tecla no se escribe en el cuadro
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.altKey || e.metaKey) return;
-    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('admPanel').hidden || $('vistaBuscar').hidden) return;
+    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || $('vistaBuscar').hidden) return;
     var t = e.target && e.target.tagName, enQ = e.target && e.target.id === 'q', k = e.key;
     if (e.ctrlKey && (k === 'k' || k === 'K')) { enfocarBuscar(); e.preventDefault(); return; }
     if (e.ctrlKey) return;
@@ -2024,8 +2035,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       return;
     }
     if (k === '/') { enfocarBuscar(); e.preventDefault(); return; }
-    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · S con stock · + − Ok · Esc quita el filtro'); e.preventDefault(); return; }
+    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · S con stock · H movimientos · + − Ok · Esc quita el filtro'); e.preventDefault(); return; }
     if (k === 'Escape' && FILTRO_AUT) { FILTRO_AUT = ''; FILTRO_AUTNOM = ''; nuevaBusqueda(); e.preventDefault(); return; }
+    if ((k === 'h' || k === 'H') && sel >= 0) { abrirHist(); e.preventDefault(); return; }
     if (k === 's' || k === 'S') { $('btnCero').click(); e.preventDefault(); return; }   // S: con Stock
     if (t === 'BUTTON') return;                                          // Enter sobre un botón enfocado lo activa él
     if ((k === 'a' || k === 'A') && sel >= 0) {
@@ -2039,7 +2051,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     else if (k === '-') { cambiar(-1); e.preventDefault(); }
     else if (k === 'Enter') { confirmar(); e.preventDefault(); }
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); cerrarAdmin(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); cerrarAdmin(); cerrarHist(); } });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && NUBE.listo) { bajar(); subirPendientes(); } });
   window.addEventListener('online', function () { if (nubeOn()) { if (NUBE.listo) { bajar(); subirPendientes(); } else conectar(); } });
 
@@ -2053,7 +2065,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function aplicarAdmin() {
     var n = nivel(), a = n === 'admin';
     document.body.classList.toggle('consulta', n === 'consulta');
-    $('tabMov').hidden = !a; $('nComo').hidden = !a; $('btnFoto').hidden = !a;
+    $('tabMov').hidden = !a; $('nComo').hidden = !a; $('btnFoto').hidden = !a; $('fHist').hidden = !a;
+    if (!a && !$('histPanel').hidden) $('histPanel').hidden = true;
     $('tabsBar').className = 'tabs' + (a ? '' : ' dos');
     if (!a && !$('fotoPanel').hidden) cerrarFoto();
     if (!a && !$('vistaMov').hidden) pestana('buscar');
@@ -2132,9 +2145,45 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     document.addEventListener('keydown', function (e) { if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) { e.preventDefault(); abrirAdmin(); } });
   })();
 
+  /* ---------- historial de un libro (solo administrador): los movimientos de este conteo ---------- */
+  function abrirHist() {
+    if (nivel() !== 'admin' || sel < 0 || !S) return;
+    var cod = S.cod[sel], hechos = MOV.filter(function (m) { return m.cod === cod; });
+    var deshechos = {};
+    MOV.forEach(function (m) { if (m.rev) { deshechos[m.rev] = 1; deshechos[m.id] = 1; } });
+    $('hiTit').textContent = S.tit[sel];
+    var neto = 0, cont = 0;
+    hechos.forEach(function (m) { if (!deshechos[m.id]) { neto += (m.delta || 0); if (!m.delta) cont++; } });
+    var lista = $('hiLista'); lista.innerHTML = '';
+    if (!hechos.length) {
+      $('hiRes').textContent = 'Todavía no hay movimientos de este libro en este conteo.';
+    } else {
+      var vivos = hechos.filter(function (m) { return !deshechos[m.id]; }).length;
+      $('hiRes').textContent = vivos + (vivos === 1 ? ' movimiento' : ' movimientos') + ' en este conteo · neto ' + (neto > 0 ? '+' : neto < 0 ? '−' : '') + Math.abs(neto) + ' · Dep 1 ahora: ' + S.d1[sel];
+      hechos.slice().reverse().forEach(function (m) {
+        var r = document.createElement('div'); r.className = 'mov' + (deshechos[m.id] ? ' des' : '');
+        var t = document.createElement('div'); t.className = 'txt';
+        var a = document.createElement('div'); a.className = 't';
+        var f = new Date(m.t);
+        a.textContent = f.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        var x = document.createElement('div'); x.className = 'm';
+        x.textContent = (m.rev ? 'deshacer · ' : '') + (m.delta ? m.antes + ' → ' + m.ahora : 'contado · Dep 1: ' + m.antes) + (m.quien ? ' · ' + m.quien : '') + (deshechos[m.id] && !m.rev ? ' · deshecho' : '');
+        t.appendChild(a); t.appendChild(x);
+        var dl = document.createElement('div'); dl.className = 'dl ' + (m.delta > 0 ? 'mas' : m.delta < 0 ? 'menos' : '');
+        dl.textContent = m.delta ? (m.delta > 0 ? '+' : '−') + Math.abs(m.delta) : '✓';
+        r.appendChild(t); r.appendChild(dl); lista.appendChild(r);
+      });
+    }
+    $('histPanel').hidden = false;
+  }
+  function cerrarHist() { $('histPanel').hidden = true; }
+  $('fHist').addEventListener('click', abrirHist);
+  $('hiCerrar').addEventListener('click', cerrarHist);
+
   /* ---------- botón "atrás" del celular: cierra lo último que abriste en vez de salir de la app ---------- */
   function atras() {                       // true si había algo para cerrar
     if (!$('admPanel').hidden) { cerrarAdmin(); return true; }
+    if (!$('histPanel').hidden) { cerrarHist(); return true; }
     if (!$('fotoPanel').hidden) { cerrarFoto(); return true; }
     if (!$('tapaPanel').hidden) { cerrarTapa(); return true; }
     if (!$('revPanel').hidden) { cerrarRev(); return true; }
