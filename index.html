@@ -320,7 +320,8 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 
   <section id="vistaPedidos" class="wrap" style="gap:12px" hidden>
     <div id="pedNuevo" class="wrap" style="gap:8px" hidden>
-      <label class="campoc">Nuevo pedido: código y cantidad, uno por línea
+      <label class="campoc">Cliente<input id="pedCli" type="text" autocomplete="off" placeholder="Nombre del cliente"></label>
+      <label class="campoc">Código y cantidad, uno por línea
         <textarea id="pedTxt" rows="5" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="9789501293982 2&#10;9788426481955 1"></textarea></label>
       <label class="campoc">Para (vacío = todos)<input id="pedPara" type="text" autocomplete="off" placeholder="Todos"></label>
       <div class="acciones"><button class="btn pri ancho" id="pedEnviar" type="button">Enviar pedido</button></div>
@@ -1569,7 +1570,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (PEDIDOS.length >= 40 && (m.t || 0) < PEDIDOS[0].t) return false;
     var it = limpiarItems(m.pedido);
     if (!it.length) return false;
-    PEDIDOS.push({ id: id, t: m.t || Date.now(), items: it, hechos: {}, de: m.de || '', para: m.paraNombre || '', mio: !!mio });
+    PEDIDOS.push({ id: id, t: m.t || Date.now(), items: it, hechos: {}, cliente: String(m.cliente || '').slice(0, 80), de: m.de || '', para: m.paraNombre || '', mio: !!mio });
     PEDIDOS.sort(function (a, b) { return a.t - b.t; });
     guardarPedidos();
     return true;
@@ -1594,7 +1595,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var f = document.createElement('button'); f.type = 'button'; f.className = 'fila';
         var t = document.createElement('div'); t.className = 'txt';
         var a = document.createElement('div'); a.className = 't';
-        a.textContent = 'Pedido · ' + q.items.length + (q.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot + (tot === 1 ? ' ejemplar' : ' ejemplares');
+        a.textContent = (q.cliente || 'Pedido') + ' · ' + q.items.length + (q.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot + (tot === 1 ? ' ejemplar' : ' ejemplares');
         var m = document.createElement('div'); m.className = 'm';
         m.textContent = fechaCorta(q.t) + (q.mio ? ' · enviado' + (q.para ? ' a ' + q.para : '') : q.de ? ' · de ' + q.de : ' · de la PC') + ' · separados ' + hechos + ' de ' + q.items.length;
         t.appendChild(a); t.appendChild(m); f.appendChild(t);
@@ -1611,7 +1612,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'btn chico'; bt.textContent = '‹ Pedidos';
     bt.addEventListener('click', function () { PEDABIERTO = null; pintarPedidos(); });
     var tb2 = document.createElement('b');
-    tb2.textContent = p.items.length + (p.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot2 + (tot2 === 1 ? ' ejemplar' : ' ejemplares');
+    tb2.textContent = (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot2 + (tot2 === 1 ? ' ejemplar' : ' ejemplares');
     var sub = document.createElement('span'); sub.className = 'sub';
     sub.textContent = 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares';
     tb2.appendChild(sub);
@@ -1654,7 +1655,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!it.length) { toast('Escribí código y cantidad, uno por línea'); return; }
     if (!nubeOn()) { toast('Para enviar hace falta tener la Nube conectada'); return; }
     var para = $('pedPara').value.trim(), id = Date.now().toString(16) + Math.random().toString(16).slice(2, 6);
-    var cuerpo = { t: Date.now(), texto: 'Pedido nuevo: ' + it.length + (it.length === 1 ? ' libro' : ' libros') + '. Aceptá y miralo en Pedidos.',
+    var cli = $('pedCli').value.trim().slice(0, 80);
+    var cuerpo = { t: Date.now(), cliente: cli, texto: (cli ? 'Pedido de ' + cli : 'Pedido nuevo') + ': ' + it.length + (it.length === 1 ? ' libro' : ' libros') + '. Aceptá y miralo en Pedidos.',
       para: normNombre(para), paraNombre: para, pedido: it, de: CFG.nombre || '' };
     $('pedEnviar').disabled = true;
     fetch(nubeBase() + '/msgs/' + id + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
@@ -1662,7 +1664,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       .then(function () {
         MSGV[id] = 1; guardarMsgV();
         cuerpo.id = id; agregarPedido(cuerpo, true);
-        $('pedTxt').value = ''; toast('✓ Pedido enviado a ' + (para || 'todos'));
+        $('pedTxt').value = ''; $('pedCli').value = ''; toast('✓ Pedido enviado a ' + (para || 'todos'));
         pintarPedidos();
       })
       .catch(function () { toast('No se pudo enviar: sin conexión'); })
