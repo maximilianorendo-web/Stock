@@ -170,6 +170,9 @@ body.consulta #fDep { pointer-events: none; }
 .resumen .tit { font-weight: 700; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 #scan .scan-acc .btn.luz[aria-pressed="true"] { background: #f2c94c; color: #222; border-color: #f2c94c; }
 .nota { color: var(--muted); font-size: 14px; padding: 8px 2px; }
+.pedcab { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 2px 2px 10px; }
+.pedcab b { font-size: 16px; }
+.fila.nohay { opacity: .55; }
 .vacio { text-align: center; color: var(--muted); padding: 28px 12px; background: var(--panel); border: 1px dashed var(--line); border-radius: 14px; }
 .vacio b { display: block; color: var(--ink); font-size: 17px; margin-bottom: 6px; }
 .mov { display: flex; gap: 10px; align-items: center; padding: 11px 14px; border-top: 1px solid var(--line); }
@@ -462,6 +465,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('btnSin').setAttribute('aria-pressed', 'false'); $('btnCero').setAttribute('aria-pressed', 'false');
   }
   var sel = -1, pend = 0, res = [], toastT = null;
+  var PEDIDO = null;       // pedido recibido por link desde la PC: { t, items: [[cod, cantidad], ...] }
   var PAG = 0, PAG_ULT = '', TAM = 15;     // resultados por página
   var CONTEO = {}, ORDEN = [], ULTLIB = null;    // conteo por escáner: código -> {cod, tit, n}
 
@@ -669,9 +673,47 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (cual === 'mov') pintarMov();
     if (cual === 'nube') pintarNube();
   }
+  function pintarPedido(r) {
+    var tot = 0; PEDIDO.items.forEach(function (x) { tot += x[1]; });
+    var cab = document.createElement('div'); cab.className = 'pedcab';
+    var b = document.createElement('b'); b.textContent = 'Pedido · ' + PEDIDO.items.length + (PEDIDO.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot + (tot === 1 ? ' ejemplar' : ' ejemplares');
+    var x = document.createElement('button'); x.type = 'button'; x.className = 'btn chico'; x.textContent = 'Cerrar pedido';
+    x.addEventListener('click', function () { PEDIDO = null; guardar('pedido', null); pintarResultados(); });
+    cab.appendChild(b); cab.appendChild(x); r.appendChild(cab);
+    var caja = document.createElement('div'); caja.className = 'lista';
+    PEDIDO.items.forEach(function (it) {
+      var k = S ? libroPorCod(it[0]) : null;
+      var f = document.createElement('button'); f.type = 'button'; f.className = 'fila' + (k == null ? ' nohay' : '');
+      var t = document.createElement('div'); t.className = 'txt';
+      var a = document.createElement('div'); a.className = 't'; a.textContent = k != null ? S.tit[k] : it[0];
+      var m = document.createElement('div'); m.className = 'm';
+      m.textContent = 'Pedido: ' + it[1] + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock');
+      t.appendChild(a); t.appendChild(m);
+      f.appendChild(t);
+      if (k != null) { var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]); f.appendChild(d); }
+      f.addEventListener('click', function () { if (k == null) { toast('Ese libro no está en tu stock'); return; } elegir(k); });
+      caja.appendChild(f);
+    });
+    r.appendChild(caja);
+  }
+  function leerHashPedido() {                        // #pedido=codigo.cantidad,codigo.cantidad,...
+    var m = /[#&]pedido=([^&]+)/.exec(location.hash || ''); if (!m) return false;
+    var it = [], vistos = {};
+    var txt = ''; try { txt = decodeURIComponent(m[1]); } catch (e) { txt = m[1]; }
+    txt.split(',').forEach(function (p) {
+      var a = p.split('.'), c = (a[0] || '').trim();
+      if (!/^[0-9A-Za-z]{6,14}$/.test(c) || vistos[c]) return;
+      vistos[c] = 1; it.push([c, Math.max(1, parseInt(a[1], 10) || 1)]);
+    });
+    try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) {}
+    if (!it.length) return false;
+    PEDIDO = { t: Date.now(), items: it }; guardar('pedido', PEDIDO);
+    return true;
+  }
   function pintarVacio() {
     var r = $('resultados');
     r.innerHTML = '';
+    if (S && PEDIDO && PEDIDO.items.length) { pintarPedido(r); return; }
     var d = document.createElement('div'); d.className = 'vacio';
     var b = document.createElement('b'); var p = document.createElement('span');
     if (!S) { b.textContent = 'Cargar Stock.csv'; p.textContent = ERRCARGA || '“Cargar stock.csv”'; if (ERRCARGA) b.textContent = 'Hay un problema'; }
@@ -1028,6 +1070,15 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         dl.textContent = m.delta ? (m.delta > 0 ? '+' : '−') + Math.abs(m.delta) : '✓';
         var u = document.createElement('button'); u.type = 'button'; u.className = 'btn chico'; u.textContent = 'Deshacer';
         u.addEventListener('click', function () { deshacer(m.id); });
+        var ir = function () {
+          var k = S ? libroPorCod(m.cod) : null;
+          if (k == null) { toast('Ese libro no está en tu stock'); return; }
+          pestana('buscar'); elegir(k);
+        };
+        t.style.cursor = 'pointer'; t.tabIndex = 0; t.setAttribute('role', 'button');
+        t.title = 'Ver la ficha del libro';
+        t.addEventListener('click', ir);
+        t.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
         r.appendChild(t); r.appendChild(dl); r.appendChild(u); caja.appendChild(r);
       });
       cont.appendChild(caja);
@@ -1508,7 +1559,20 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (vm && vm.id && nubeOn()) {
       try { fetch(nubeBase() + '/msgs/' + vm.id + '/resp/' + encodeURIComponent(CFG.dev || 'x') + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n: CFG.nombre || '(sin nombre)', t: Date.now() }) }).catch(function () {}); } catch (e) {}
     }
-    MSGQ.shift(); $('msgBox').hidden = true; mostrarMsg(); });
+    MSGQ.shift(); $('msgBox').hidden = true;
+    if (vm && vm.pedido) { aceptarPedido(vm); }
+    mostrarMsg(); });
+  function aceptarPedido(m) {                        // la PC mandó un pedido: pasa a ser la lista de Buscar
+    var it = [], vistos = {};
+    (m.pedido || []).forEach(function (x) {
+      var c = String(x && x[0] || '').trim();
+      if (!/^[0-9A-Za-z]{6,14}$/.test(c) || vistos[c]) return;
+      vistos[c] = 1; it.push([c, Math.max(1, parseInt(x[1], 10) || 1)]);
+    });
+    if (!it.length) return;
+    PEDIDO = { t: m.t || Date.now(), items: it }; guardar('pedido', PEDIDO);
+    pestana('buscar'); sel = -1; pend = 0; pintarFicha(); pintarResultados();
+  }
   function bajarMsgs() {
     if (!nubeOn()) return Promise.resolve();
     return fetch(nubeBase() + '/msgs.json').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }).then(function (d) {
@@ -2204,8 +2268,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   } catch (e) {}
 
   pintarVacio();
-  Promise.all([leer('csv'), leer('mov'), leer('cfg'), leer('conteo'), leer('ubic')]).then(function (r) {
+  Promise.all([leer('csv'), leer('mov'), leer('cfg'), leer('conteo'), leer('ubic'), leer('pedido')]).then(function (r) {
     var c = r[0], m = r[1], g = r[2], cn = r[3], ub = r[4];
+    if (r[5] && r[5].items) PEDIDO = r[5];
     if (ub && ub.m && m && ub.ses === m.ses) { UBIC = ub.m; UBICPEND = ub.p || {}; }
     if (cn && cn.c && cn.o) { CONTEO = cn.c; ORDEN = cn.o; }
     if (g) { Object.keys(g).forEach(function (k) { CFG[k] = g[k]; }); }
@@ -2219,7 +2284,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       CSVTXT = c;
       try { S = armar(c.texto, c.enc, c.nombre, c.fecha); aplicarOver(S, OVER); } catch (e) { S = null; ERRCARGA = 'No pude abrir el stock guardado (' + (e && e.message || e) + '). Lo guardado sigue ahí: probá cerrar y abrir la app, o conectá la Nube.'; }
     }
+    var llego = leerHashPedido();
     estado(); contar(); pintarResultados(); pintarAvisoConteo();
+    if (llego) toast('Pedido recibido: ' + PEDIDO.items.length + (PEDIDO.items.length === 1 ? ' libro' : ' libros'));
     if (ERRCARGA) { toast('⚠ ' + ERRCARGA.slice(0, 90)); pintarVacio(); }
     if (nubeOn()) conectar();
   });
