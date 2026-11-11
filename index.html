@@ -92,14 +92,14 @@ header .estado b { font-weight: 600; }
 .btn[disabled] { opacity: .45; }
 header .btn { background: transparent; color: var(--hdr-ink); border-color: rgba(255,255,255,.35); min-height: 32px; padding: 4px 10px; font-size: 13px; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--press); border-radius: 12px; padding: 3px; gap: 3px; margin-top: 8px; }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--press); border-radius: 12px; padding: 3px; gap: 3px; margin-top: 8px; }
 
 #hiLista { max-height: 55vh; overflow-y: auto; }
 #hiLista .mov.des .t, #hiLista .mov.des .m, #hiLista .mov.des .dl { text-decoration: line-through; opacity: .55; }
 body.consulta .tres, body.consulta #btnScan, body.consulta #btnUbi, body.consulta #btnSin { display: none !important; }
 body.consulta #fUbic { pointer-events: none; background: transparent; border-color: transparent; }
 body.consulta #fDep { pointer-events: none; }
-.tabs.dos { grid-template-columns: repeat(2, 1fr); }
+.tabs.dos { grid-template-columns: repeat(3, 1fr); }
 .tabs button { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 15px; font-weight: 600; padding: 0 4px; min-height: 38px; border-radius: 9px; cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .buscador { display: flex; gap: 8px; }
@@ -173,6 +173,14 @@ body.consulta #fDep { pointer-events: none; }
 .pedcab { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 2px 2px 10px; }
 .pedcab b { font-size: 16px; }
 .fila.nohay { opacity: .55; }
+.campoc textarea { font: inherit; font-size: 16px; font-weight: 400; color: var(--ink); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 11px 12px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.campoc textarea:focus { border-color: var(--accent); outline: none; }
+.fila.ped { cursor: default; gap: 10px; }
+.fila.ped .txt { cursor: pointer; }
+.fila.ped.hecho .t { text-decoration: line-through; color: var(--muted); }
+.chk { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); color: var(--accent-ink); font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.chk[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+.pedcab .sub { color: var(--muted); font-size: 13px; font-weight: 400; display: block; }
 .vacio { text-align: center; color: var(--muted); padding: 28px 12px; background: var(--panel); border: 1px dashed var(--line); border-radius: 14px; }
 .vacio b { display: block; color: var(--ink); font-size: 17px; margin-bottom: 6px; }
 .mov { display: flex; gap: 10px; align-items: center; padding: 11px 14px; border-top: 1px solid var(--line); }
@@ -259,6 +267,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 <main class="wrap">
   <div class="tabs dos" id="tabsBar" role="tablist">
     <button role="tab" id="tabBuscar" aria-selected="true" type="button">Buscar</button>
+    <button role="tab" id="tabPedidos" aria-selected="false" type="button">Pedidos <span id="nPed"></span></button>
     <button role="tab" id="tabMov" aria-selected="false" type="button" hidden>Movim. <span id="nMov"></span></button>
     <button role="tab" id="tabNube" aria-selected="false" type="button">☁ Nube</button>
   </div>
@@ -309,6 +318,15 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <div id="resultados"></div>
   </section>
 
+  <section id="vistaPedidos" class="wrap" style="gap:12px" hidden>
+    <div id="pedNuevo" class="wrap" style="gap:8px" hidden>
+      <label class="campoc">Nuevo pedido: código y cantidad, uno por línea
+        <textarea id="pedTxt" rows="5" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="9789501293982 2&#10;9788426481955 1"></textarea></label>
+      <label class="campoc">Para (vacío = todos)<input id="pedPara" type="text" autocomplete="off" placeholder="Todos"></label>
+      <div class="acciones"><button class="btn pri ancho" id="pedEnviar" type="button">Enviar pedido</button></div>
+    </div>
+    <div id="pedCont"></div>
+  </section>
   <section id="vistaMov" class="wrap" style="gap:12px" hidden>
     <div id="movResumen" class="resumen" hidden></div>
     <div class="mfil" id="movFiltros" hidden>
@@ -401,6 +419,9 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <div class="nota">PIN de conteo: es el que les das a quienes cuentan. Con ese PIN el teléfono pasa a modo conteo.</div>
       <label class="campoc">PIN de conteo<input id="admPinC" type="password" inputmode="numeric" autocomplete="off" maxlength="12"></label>
       <button class="btn" id="admGuardarC" type="button">Guardar PIN de conteo</button>
+      <div class="nota" style="margin-top:10px">PIN de pedidos: con ese PIN el teléfono consulta y además arma y manda pedidos (no cuenta).</div>
+      <label class="campoc">PIN de pedidos<input id="admPinP" type="password" inputmode="numeric" autocomplete="off" maxlength="12"></label>
+      <button class="btn" id="admGuardarP" type="button">Guardar PIN de pedidos</button>
     </div>
   </div>
 </div>
@@ -465,7 +486,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('btnSin').setAttribute('aria-pressed', 'false'); $('btnCero').setAttribute('aria-pressed', 'false');
   }
   var sel = -1, pend = 0, res = [], toastT = null;
-  var PEDIDO = null;       // pedido recibido por link desde la PC: { t, items: [[cod, cantidad], ...] }
+  var PEDIDOS = [], PEDABIERTO = null, PEDVOLVER = null;   // pedidos recibidos/enviados: [{id, t, items:[[cod,cant]], hechos:{cod:1}, de, para, mio}]
   var PAG = 0, PAG_ULT = '', TAM = 15;     // resultados por página
   var CONTEO = {}, ORDEN = [], ULTLIB = null;    // conteo por escáner: código -> {cod, tit, n}
 
@@ -664,56 +685,19 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     e.querySelector('span').textContent = S.pos.length.toLocaleString('es-AR') + ' libros · ' + S.fecha + nube;
     $('btnCargar').textContent = 'Cambiar';
   }
-  var VISTAS = ['Buscar', 'Mov', 'Nube'];
+  var VISTAS = ['Buscar', 'Pedidos', 'Mov', 'Nube'];
   function pestana(cual) {
     VISTAS.forEach(function (v) {
       var on = v.toLowerCase() === cual;
       $('vista' + v).hidden = !on; $('tab' + v).setAttribute('aria-selected', on);
     });
     if (cual === 'mov') pintarMov();
+    if (cual === 'pedidos') pintarPedidos();
     if (cual === 'nube') pintarNube();
-  }
-  function pintarPedido(r) {
-    var tot = 0; PEDIDO.items.forEach(function (x) { tot += x[1]; });
-    var cab = document.createElement('div'); cab.className = 'pedcab';
-    var b = document.createElement('b'); b.textContent = 'Pedido · ' + PEDIDO.items.length + (PEDIDO.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot + (tot === 1 ? ' ejemplar' : ' ejemplares');
-    var x = document.createElement('button'); x.type = 'button'; x.className = 'btn chico'; x.textContent = 'Cerrar pedido';
-    x.addEventListener('click', function () { PEDIDO = null; guardar('pedido', null); pintarResultados(); });
-    cab.appendChild(b); cab.appendChild(x); r.appendChild(cab);
-    var caja = document.createElement('div'); caja.className = 'lista';
-    PEDIDO.items.forEach(function (it) {
-      var k = S ? libroPorCod(it[0]) : null;
-      var f = document.createElement('button'); f.type = 'button'; f.className = 'fila' + (k == null ? ' nohay' : '');
-      var t = document.createElement('div'); t.className = 'txt';
-      var a = document.createElement('div'); a.className = 't'; a.textContent = k != null ? S.tit[k] : it[0];
-      var m = document.createElement('div'); m.className = 'm';
-      m.textContent = 'Pedido: ' + it[1] + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock');
-      t.appendChild(a); t.appendChild(m);
-      f.appendChild(t);
-      if (k != null) { var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]); f.appendChild(d); }
-      f.addEventListener('click', function () { if (k == null) { toast('Ese libro no está en tu stock'); return; } elegir(k); });
-      caja.appendChild(f);
-    });
-    r.appendChild(caja);
-  }
-  function leerHashPedido() {                        // #pedido=codigo.cantidad,codigo.cantidad,...
-    var m = /[#&]pedido=([^&]+)/.exec(location.hash || ''); if (!m) return false;
-    var it = [], vistos = {};
-    var txt = ''; try { txt = decodeURIComponent(m[1]); } catch (e) { txt = m[1]; }
-    txt.split(',').forEach(function (p) {
-      var a = p.split('.'), c = (a[0] || '').trim();
-      if (!/^[0-9A-Za-z]{6,14}$/.test(c) || vistos[c]) return;
-      vistos[c] = 1; it.push([c, Math.max(1, parseInt(a[1], 10) || 1)]);
-    });
-    try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) {}
-    if (!it.length) return false;
-    PEDIDO = { t: Date.now(), items: it }; guardar('pedido', PEDIDO);
-    return true;
   }
   function pintarVacio() {
     var r = $('resultados');
     r.innerHTML = '';
-    if (S && PEDIDO && PEDIDO.items.length) { pintarPedido(r); return; }
     var d = document.createElement('div'); d.className = 'vacio';
     var b = document.createElement('b'); var p = document.createElement('span');
     if (!S) { b.textContent = 'Cargar Stock.csv'; p.textContent = ERRCARGA || '“Cargar stock.csv”'; if (ERRCARGA) b.textContent = 'Hay un problema'; }
@@ -1560,20 +1544,130 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       try { fetch(nubeBase() + '/msgs/' + vm.id + '/resp/' + encodeURIComponent(CFG.dev || 'x') + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n: CFG.nombre || '(sin nombre)', t: Date.now() }) }).catch(function () {}); } catch (e) {}
     }
     MSGQ.shift(); $('msgBox').hidden = true;
-    if (vm && vm.pedido) { aceptarPedido(vm); }
+    if (vm && vm.pedido && vm.id) { sel = -1; pintarFicha(); abrirPedido(vm.id); }
     mostrarMsg(); });
-  function aceptarPedido(m) {                        // la PC mandó un pedido: pasa a ser la lista de Buscar
+  function limpiarItems(lista) {
     var it = [], vistos = {};
-    (m.pedido || []).forEach(function (x) {
-      var c = String(x && x[0] || '').trim();
-      if (!/^[0-9A-Za-z]{6,14}$/.test(c) || vistos[c]) return;
-      vistos[c] = 1; it.push([c, Math.max(1, parseInt(x[1], 10) || 1)]);
+    (lista || []).forEach(function (x) {
+      var c = String(x && x[0] || '').trim().toUpperCase();
+      if (!/^[0-9]{6,14}X?$/.test(c)) return;
+      var n = Math.max(1, parseInt(x[1], 10) || 1);
+      if (vistos[c] != null) { it[vistos[c]][1] += n; return; }
+      vistos[c] = it.length; it.push([c, n]);
     });
-    if (!it.length) return;
-    PEDIDO = { t: m.t || Date.now(), items: it }; guardar('pedido', PEDIDO);
-    pestana('buscar'); sel = -1; pend = 0; $('q').value = ''; limpiarFiltros(); PAG = 0;   // sin búsqueda ni filtros: así se ve la lista
-    pintarFicha(); pintarResultados(); window.scrollTo({ top: 0 });
+    return it;
   }
+  function guardarPedidos() { PEDIDOS = PEDIDOS.slice(-40); guardar('pedidos', PEDIDOS); contarPedidos(); }
+  function contarPedidos() {
+    var n = PEDIDOS.filter(function (p) { return !p.mio && !pedCompleto(p); }).length;
+    $('nPed').textContent = n ? '(' + n + ')' : '';
+  }
+  function pedCompleto(p) { return p.items.length && p.items.every(function (x) { return p.hechos && p.hechos[x[0]]; }); }
+  function agregarPedido(m, mio) {                    // true si era nuevo
+    var id = m.id || ('p' + Date.now().toString(36));
+    if (PEDIDOS.some(function (p) { return p.id === id; })) return false;
+    var it = limpiarItems(m.pedido);
+    if (!it.length) return false;
+    PEDIDOS.push({ id: id, t: m.t || Date.now(), items: it, hechos: {}, de: m.de || '', para: m.paraNombre || '', mio: !!mio });
+    guardarPedidos();
+    return true;
+  }
+  function fechaCorta(t) { return new Date(t).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+  function pintarPedidos() {
+    var c = $('pedCont'); c.innerHTML = '';
+    $('pedNuevo').hidden = !puedePedir() || !!PEDABIERTO;
+    var p = PEDABIERTO ? PEDIDOS.filter(function (x) { return x.id === PEDABIERTO; })[0] : null;
+    if (PEDABIERTO && !p) PEDABIERTO = null;
+    if (!p) {
+      if (!PEDIDOS.length) {
+        var d = document.createElement('div'); d.className = 'vacio';
+        var b = document.createElement('b'); b.textContent = 'Todavía no hay pedidos';
+        var sp = document.createElement('span'); sp.textContent = 'Los que manden desde la PC aparecen acá y quedan guardados.';
+        d.appendChild(b); d.appendChild(sp); c.appendChild(d); return;
+      }
+      var caja = document.createElement('div'); caja.className = 'lista';
+      PEDIDOS.slice().reverse().forEach(function (q) {
+        var tot = 0, hechos = 0, hej = 0;
+        q.items.forEach(function (x) { tot += x[1]; if (q.hechos && q.hechos[x[0]]) { hechos++; hej += x[1]; } });
+        var f = document.createElement('button'); f.type = 'button'; f.className = 'fila';
+        var t = document.createElement('div'); t.className = 'txt';
+        var a = document.createElement('div'); a.className = 't';
+        a.textContent = 'Pedido · ' + q.items.length + (q.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot + (tot === 1 ? ' ejemplar' : ' ejemplares');
+        var m = document.createElement('div'); m.className = 'm';
+        m.textContent = fechaCorta(q.t) + (q.mio ? ' · enviado' + (q.para ? ' a ' + q.para : '') : q.de ? ' · de ' + q.de : ' · de la PC') + ' · separados ' + hechos + ' de ' + q.items.length;
+        t.appendChild(a); t.appendChild(m); f.appendChild(t);
+        var d2 = document.createElement('div'); d2.className = 'd'; d2.textContent = pedCompleto(q) ? '✓' : ''; f.appendChild(d2);
+        f.addEventListener('click', function () { PEDABIERTO = q.id; pintarPedidos(); window.scrollTo({ top: 0 }); });
+        caja.appendChild(f);
+      });
+      c.appendChild(caja);
+      return;
+    }
+    var tot2 = 0, hechos2 = 0, hej2 = 0;
+    p.items.forEach(function (x) { tot2 += x[1]; if (p.hechos && p.hechos[x[0]]) { hechos2++; hej2 += x[1]; } });
+    var cab = document.createElement('div'); cab.className = 'pedcab';
+    var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'btn chico'; bt.textContent = '‹ Pedidos';
+    bt.addEventListener('click', function () { PEDABIERTO = null; pintarPedidos(); });
+    var tb2 = document.createElement('b');
+    tb2.textContent = p.items.length + (p.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot2 + (tot2 === 1 ? ' ejemplar' : ' ejemplares');
+    var sub = document.createElement('span'); sub.className = 'sub';
+    sub.textContent = 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares';
+    tb2.appendChild(sub);
+    cab.appendChild(bt); cab.appendChild(tb2); c.appendChild(cab);
+    var lista = document.createElement('div'); lista.className = 'lista';
+    p.items.forEach(function (it) {
+      var k = S ? libroPorCod(it[0]) : null, ok = !!(p.hechos && p.hechos[it[0]]);
+      var f = document.createElement('div'); f.className = 'fila ped' + (ok ? ' hecho' : '') + (k == null ? ' nohay' : '');
+      var ck = document.createElement('button'); ck.type = 'button'; ck.className = 'chk'; ck.setAttribute('role', 'checkbox');
+      ck.setAttribute('aria-checked', ok); ck.setAttribute('aria-label', 'Separado'); ck.textContent = ok ? '✓' : '';
+      ck.addEventListener('click', function () { p.hechos = p.hechos || {}; if (p.hechos[it[0]]) delete p.hechos[it[0]]; else p.hechos[it[0]] = 1; guardarPedidos(); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); });
+      var t = document.createElement('div'); t.className = 'txt';
+      var a = document.createElement('div'); a.className = 't'; a.textContent = k != null ? S.tit[k] : it[0];
+      var m = document.createElement('div'); m.className = 'm';
+      m.textContent = 'Pedido: ' + it[1] + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock');
+      t.appendChild(a); t.appendChild(m);
+      f.appendChild(ck); f.appendChild(t);
+      if (k != null) { var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]); f.appendChild(d); }
+      t.addEventListener('click', function () {
+        if (k == null) { toast('Ese libro no está en tu stock'); return; }
+        PEDVOLVER = { id: p.id, k: k }; pestana('buscar'); elegir(k);
+      });
+      lista.appendChild(f);
+    });
+    c.appendChild(lista);
+    var del = document.createElement('button'); del.type = 'button'; del.className = 'btn ancho'; del.style.marginTop = '12px'; del.textContent = 'Borrar este pedido';
+    del.addEventListener('click', function () {
+      if (!confirm('¿Borrar este pedido de este teléfono?')) return;
+      PEDIDOS = PEDIDOS.filter(function (x) { return x.id !== p.id; }); PEDABIERTO = null; guardarPedidos(); pintarPedidos();
+    });
+    c.appendChild(del);
+  }
+  function enviarPedido() {
+    var it = [];
+    $('pedTxt').value.split('\n').forEach(function (l) {
+      var m = /^\s*(\d{6,14}X?)(?:[\s;,\t]+(\d{1,6}))?/i.exec(l);
+      if (m) it.push([m[1], m[2] ? parseInt(m[2], 10) : 1]);
+    });
+    it = limpiarItems(it);
+    if (!it.length) { toast('Escribí código y cantidad, uno por línea'); return; }
+    if (!nubeOn()) { toast('Para enviar hace falta tener la Nube conectada'); return; }
+    var para = $('pedPara').value.trim(), id = Date.now().toString(16) + Math.random().toString(16).slice(2, 6);
+    var cuerpo = { t: Date.now(), texto: 'Pedido nuevo: ' + it.length + (it.length === 1 ? ' libro' : ' libros') + '. Aceptá y miralo en Pedidos.',
+      para: normNombre(para), paraNombre: para, pedido: it, de: CFG.nombre || '' };
+    $('pedEnviar').disabled = true;
+    fetch(nubeBase() + '/msgs/' + id + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
+      .then(function (r) { if (!r.ok) throw new Error('http'); })
+      .then(function () {
+        MSGV[id] = 1; guardarMsgV();
+        cuerpo.id = id; agregarPedido(cuerpo, true);
+        $('pedTxt').value = ''; toast('✓ Pedido enviado a ' + (para || 'todos'));
+        pintarPedidos();
+      })
+      .catch(function () { toast('No se pudo enviar: sin conexión'); })
+      .then(function () { $('pedEnviar').disabled = false; });
+  }
+  $('pedEnviar').addEventListener('click', enviarPedido);
+  function abrirPedido(id) { PEDABIERTO = id; pestana('pedidos'); window.scrollTo({ top: 0 }); }
   function bajarMsgs() {
     if (!nubeOn()) return Promise.resolve();
     return fetch(nubeBase() + '/msgs.json').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }).then(function (d) {
@@ -1586,7 +1680,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var m = d[id] || {};
         if (!MSGINI) return;                        // la primera vez no se muestran los viejos
         if (m.para && m.para !== yo) return;
-        if (m.texto) { m.id = id; MSGQ.push(m); }
+        if (m.texto) { m.id = id; if (m.pedido) agregarPedido(m, false); MSGQ.push(m); }
       });
       MSGINI = true; guardarMsgV(); mostrarMsg();
     }).catch(function () {});
@@ -1909,6 +2003,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('btnCargar').addEventListener('click', function () { $('archivo').click(); });
   $('archivo').addEventListener('change', function () { cargarArchivo(this.files && this.files[0]); this.value = ''; });
   $('tabBuscar').addEventListener('click', function () { pestana('buscar'); });
+  $('tabPedidos').addEventListener('click', function () { PEDABIERTO = null; pestana('pedidos'); });
   $('tabMov').addEventListener('click', function () { pestana('mov'); });
   $('tabNube').addEventListener('click', function () { pestana('nube'); });
   var tq = null;
@@ -2123,19 +2218,21 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
 
   /* ---------- modos: consulta (por defecto) · conteo (PIN de conteo) · administrador (PIN de administrador).
      Solo oculta pantallas y botones: no protege los datos de la nube. ---------- */
-  function nivel() { return CFG.nivel === 'admin' || CFG.nivel === 'conteo' ? CFG.nivel : (CFG.adm ? 'admin' : 'consulta'); }
-  function puedeContar() { return nivel() !== 'consulta'; }
+  function nivel() { return CFG.nivel === 'admin' || CFG.nivel === 'conteo' || CFG.nivel === 'pedidos' ? CFG.nivel : (CFG.adm ? 'admin' : 'consulta'); }
+  function puedeContar() { var n = nivel(); return n === 'admin' || n === 'conteo'; }
+  function puedePedir() { var n = nivel(); return n === 'admin' || n === 'pedidos'; }
   function sinPermiso() { toast('Modo consulta: para contar hace falta el PIN de conteo'); }
   function ponerNivel(n) { CFG.nivel = n; CFG.adm = n === 'admin'; guardarCfg(); aplicarAdmin(); }
   function aplicarAdmin() {
     var n = nivel(), a = n === 'admin';
-    document.body.classList.toggle('consulta', n === 'consulta');
+    document.body.classList.toggle('consulta', n === 'consulta' || n === 'pedidos');
+    if ($('vistaPedidos') && !$('vistaPedidos').hidden) pintarPedidos();
     $('tabMov').hidden = !a; $('nComo').hidden = !a; $('btnFoto').hidden = !a; $('fHist').hidden = !a;
     if (!a && !$('histPanel').hidden) $('histPanel').hidden = true;
     $('tabsBar').className = 'tabs' + (a ? '' : ' dos');
     if (!a && !$('fotoPanel').hidden) cerrarFoto();
     if (!a && !$('vistaMov').hidden) pestana('buscar');
-    if (n === 'consulta') { if (SOLO_SIN) $('btnSin').click(); if (!$('fIn').hidden) { $('fIn').hidden = true; $('fDep').hidden = false; } pend = 0; if (S) pintarFicha(); }
+    if (n === 'consulta' || n === 'pedidos') { if (SOLO_SIN) $('btnSin').click(); if (!$('fIn').hidden) { $('fIn').hidden = true; $('fDep').hidden = false; } pend = 0; if (S) pintarFicha(); }
   }
   function hashPin(pin) {
     var txt = 'mrstock:' + CFG.clave + ':' + pin;
@@ -2155,15 +2252,16 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   var ADMNUEVO = false;
   function abrirAdmin() {
     var n = nivel();
-    $('admPin').value = ''; $('admPinC').value = ''; ADMNUEVO = false;
+    $('admPin').value = ''; $('admPinC').value = ''; $('admPinP').value = ''; ADMNUEVO = false;
     $('admOk').textContent = 'Entrar';
-    $('admTit').textContent = n === 'admin' ? 'Sos administrador' : n === 'conteo' ? 'Modo conteo' : 'Modo consulta';
+    $('admTit').textContent = n === 'admin' ? 'Sos administrador' : n === 'conteo' ? 'Modo conteo' : n === 'pedidos' ? 'Modo pedidos' : 'Modo consulta';
     $('admSalir').hidden = n === 'consulta';
     $('admL').hidden = n === 'admin'; $('admOk').hidden = n === 'admin';
     $('admCont').hidden = n !== 'admin';
     $('admTxt').textContent = n === 'admin' ? 'Ves todo: Movimientos, fotos de estante y las instrucciones de Firebase.'
       : !nubeOn() ? 'Primero conectá la nube, para poder verificar el PIN.'
-      : n === 'conteo' ? 'Podés contar. Con el PIN de administrador pasás a administrador.' : 'Solo consulta. Escribí un PIN para cambiar de modo.';
+      : n === 'conteo' ? 'Podés contar. Con el PIN de administrador pasás a administrador.'
+      : n === 'pedidos' ? 'Consultás el stock y mandás pedidos, pero no contás. Con otro PIN cambiás de modo.' : 'Solo consulta. Escribí un PIN para cambiar de modo.';
     $('admPanel').hidden = false;
     if (n !== 'admin' && nubeOn()) {
       leerPin('admin').then(function (d) {
@@ -2172,7 +2270,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       $('admPin').focus();
     }
   }
-  function cerrarAdmin() { $('admPanel').hidden = true; $('admPin').value = ''; $('admPinC').value = ''; }
+  function cerrarAdmin() { $('admPanel').hidden = true; $('admPin').value = ''; $('admPinC').value = ''; $('admPinP').value = ''; }
   $('admCerrar').addEventListener('click', cerrarAdmin);
   $('admSalir').addEventListener('click', function () { ponerNivel('consulta'); cerrarAdmin(); toast('Modo consulta'); });
   $('admPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('admOk').click(); } });
@@ -2187,18 +2285,30 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       return;
     }
     if (!pin) return;
-    Promise.all([hashPin(pin), leerPin('admin'), leerPin('conteo')]).then(function (r) {
+    Promise.all([hashPin(pin), leerPin('admin'), leerPin('conteo'), leerPin('pedidos')]).then(function (r) {
       if (r[1] && r[1].h === r[0]) { ponerNivel('admin'); cerrarAdmin(); toast('Modo administrador'); }
       else if (r[2] && r[2].h === r[0]) { ponerNivel('conteo'); cerrarAdmin(); toast('Modo conteo'); }
+      else if (r[3] && r[3].h === r[0]) { ponerNivel('pedidos'); cerrarAdmin(); toast('Modo pedidos'); }
       else { $('admPin').value = ''; toast(r[1] ? 'PIN incorrecto' : 'No hay PIN todavía: cerrá y volvé a abrir'); }
     }, function () { toast('Sin conexión: no pude verificar el PIN'); });
   });
   $('admGuardarC').addEventListener('click', function () {
     var pin = $('admPinC').value.trim();
     if (!/^[0-9]{4,12}$/.test(pin)) { toast('El PIN: de 4 a 12 números'); return; }
-    Promise.all([hashPin(pin), leerPin('admin')]).then(function (r) {
+    Promise.all([hashPin(pin), leerPin('admin'), leerPin('pedidos')]).then(function (r) {
       if (r[1] && r[1].h === r[0]) { toast('Tiene que ser distinto al de administrador'); return; }
+      if (r[2] && r[2].h === r[0]) { toast('Tiene que ser distinto al de pedidos'); return; }
       return ponerPin('conteo', r[0]).then(function () { $('admPinC').value = ''; toast('PIN de conteo guardado'); });
+    }).catch(function () { toast('No pude guardar el PIN (sin conexión)'); });
+  });
+  $('admPinP').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('admGuardarP').click(); } });
+  $('admGuardarP').addEventListener('click', function () {
+    var pin = $('admPinP').value.trim();
+    if (!/^[0-9]{4,12}$/.test(pin)) { toast('El PIN: de 4 a 12 números'); return; }
+    Promise.all([hashPin(pin), leerPin('admin'), leerPin('conteo')]).then(function (r) {
+      if (r[1] && r[1].h === r[0]) { toast('Tiene que ser distinto al de administrador'); return; }
+      if (r[2] && r[2].h === r[0]) { toast('Tiene que ser distinto al de conteo'); return; }
+      return ponerPin('pedidos', r[0]).then(function () { $('admPinP').value = ''; toast('PIN de pedidos guardado'); });
     }).catch(function () { toast('No pude guardar el PIN (sin conexión)'); });
   });
   (function () {                                   // se abre tocando 5 veces seguidas el texto de arriba, o con Ctrl+Mayús+A
@@ -2254,7 +2364,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!$('revPanel').hidden) { cerrarRev(); return true; }
     if (!$('scan').hidden) { cerrarScan(); return true; }
     if (!$('ediPanel').hidden) { cerrarEdi(); return true; }
+    if (!$('vistaPedidos').hidden && PEDABIERTO) { PEDABIERTO = null; pintarPedidos(); return true; }
     if ($('vistaBuscar').hidden) { pestana('buscar'); return true; }
+    if (sel >= 0 && PEDVOLVER && PEDVOLVER.k === sel) { var pv = PEDVOLVER; PEDVOLVER = null; sel = -1; pend = 0; pintarFicha(); pintarResultados(); abrirPedido(pv.id); return true; }
     if (sel >= 0 && res.length !== 1) { sel = -1; pend = 0; pintarFicha(); pintarResultados(); return true; }   // con un solo resultado, la ficha sale sola: se limpia la búsqueda
     if ($('q').value || hayFiltro() || sel >= 0) { $('q').value = ''; limpiarFiltros(); nuevaBusqueda(); return true; }
     return false;
@@ -2269,9 +2381,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   } catch (e) {}
 
   pintarVacio();
-  Promise.all([leer('csv'), leer('mov'), leer('cfg'), leer('conteo'), leer('ubic'), leer('pedido')]).then(function (r) {
+  Promise.all([leer('csv'), leer('mov'), leer('cfg'), leer('conteo'), leer('ubic'), leer('pedidos')]).then(function (r) {
     var c = r[0], m = r[1], g = r[2], cn = r[3], ub = r[4];
-    if (r[5] && r[5].items) PEDIDO = r[5];
+    if (r[5] && r[5].length) PEDIDOS = r[5];
     if (ub && ub.m && m && ub.ses === m.ses) { UBIC = ub.m; UBICPEND = ub.p || {}; }
     if (cn && cn.c && cn.o) { CONTEO = cn.c; ORDEN = cn.o; }
     if (g) { Object.keys(g).forEach(function (k) { CFG[k] = g[k]; }); }
@@ -2285,9 +2397,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       CSVTXT = c;
       try { S = armar(c.texto, c.enc, c.nombre, c.fecha); aplicarOver(S, OVER); } catch (e) { S = null; ERRCARGA = 'No pude abrir el stock guardado (' + (e && e.message || e) + '). Lo guardado sigue ahí: probá cerrar y abrir la app, o conectá la Nube.'; }
     }
-    var llego = leerHashPedido();
-    estado(); contar(); pintarResultados(); pintarAvisoConteo();
-    if (llego) toast('Pedido recibido: ' + PEDIDO.items.length + (PEDIDO.items.length === 1 ? ' libro' : ' libros'));
+    estado(); contar(); pintarResultados(); pintarAvisoConteo(); contarPedidos();
     if (ERRCARGA) { toast('⚠ ' + ERRCARGA.slice(0, 90)); pintarVacio(); }
     if (nubeOn()) conectar();
   });
