@@ -1571,7 +1571,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     });
     if (!it.length) return;
     PEDIDO = { t: m.t || Date.now(), items: it }; guardar('pedido', PEDIDO);
-    pestana('buscar'); sel = -1; pend = 0; pintarFicha(); pintarResultados();
+    pestana('buscar'); sel = -1; pend = 0; $('q').value = ''; limpiarFiltros(); PAG = 0;   // sin búsqueda ni filtros: así se ve la lista
+    pintarFicha(); pintarResultados(); window.scrollTo({ top: 0 });
   }
   function bajarMsgs() {
     if (!nubeOn()) return Promise.resolve();
