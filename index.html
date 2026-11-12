@@ -1560,6 +1560,22 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     });
     return it;
   }
+  /* confirmación para la PC: "recibido" apenas llega, "separando X de N" a medida que se tilda y la hora del cierre al completar */
+  function enviarAcks() {
+    if (!nubeOn() || !normNombre(CFG.nombre)) return;
+    PEDIDOS.forEach(function (q) {
+      if (!q.ackPend || q.mio) return;
+      var hechos = q.items.filter(function (x) { return q.hechos && q.hechos[x[0]]; }).length;
+      var cerrado = pedCompleto(q) ? (q.cerrado || Date.now()) : 0;
+      q.cerrado = cerrado;
+      var cuerpo = { n: CFG.nombre, rec: q.rec || q.t, hechos: hechos, total: q.items.length, cerrado: cerrado, t: Date.now() };
+      q.ackPend = false;
+      fetch(nubeBase() + '/pedacks/' + encodeURIComponent(q.id) + '/' + encodeURIComponent(normNombre(CFG.nombre)) + '.json',
+        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
+        .then(function (r) { if (!r.ok) throw new Error('http'); })
+        .catch(function () { q.ackPend = true; guardarPedidos(); });
+    });
+  }
   function guardarPedidos() { PEDIDOS = PEDIDOS.slice(-40); guardar('pedidos', PEDIDOS); contarPedidos(); }
   function contarPedidos() {
     var n = PEDIDOS.filter(function (p) { return !p.mio && !pedCompleto(p); }).length;
@@ -1574,7 +1590,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!it.length) return false;
     PEDIDOS.push({ id: id, t: m.t || Date.now(), items: it, hechos: {}, cliente: String(m.cliente || '').slice(0, 80), de: m.de || '', para: m.paraNombre || '', mio: !!mio });
     PEDIDOS.sort(function (a, b) { return a.t - b.t; });
+    if (!mio) PEDIDOS.forEach(function (q) { if (q.id === id) { q.rec = Date.now(); q.ackPend = true; } });
     guardarPedidos();
+    if (!mio) enviarAcks();
     return true;
   }
   function fechaCorta(t) { return new Date(t).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
@@ -1625,7 +1643,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       var f = document.createElement('div'); f.className = 'fila ped' + (ok ? ' hecho' : '') + (k == null ? ' nohay' : '');
       var ck = document.createElement('button'); ck.type = 'button'; ck.className = 'chk'; ck.setAttribute('role', 'checkbox');
       ck.setAttribute('aria-checked', ok); ck.setAttribute('aria-label', 'Separado'); ck.textContent = ok ? '✓' : '';
-      ck.addEventListener('click', function () { p.hechos = p.hechos || {}; if (p.hechos[it[0]]) delete p.hechos[it[0]]; else p.hechos[it[0]] = 1; guardarPedidos(); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); });
+      ck.addEventListener('click', function () { p.hechos = p.hechos || {}; if (p.hechos[it[0]]) delete p.hechos[it[0]]; else p.hechos[it[0]] = 1; p.ackPend = true; guardarPedidos(); enviarAcks(); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); });
       var t = document.createElement('div'); t.className = 'txt';
       var a = document.createElement('div'); a.className = 't'; a.textContent = k != null ? S.tit[k] : it[0];
       var m = document.createElement('div'); m.className = 'm';
@@ -1675,6 +1693,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('pedEnviar').addEventListener('click', enviarPedido);
   function abrirPedido(id) { PEDABIERTO = id; pestana('pedidos'); window.scrollTo({ top: 0 }); }
   function bajarMsgs() {
+    enviarAcks();
     if (!nubeOn()) return Promise.resolve();
     return fetch(nubeBase() + '/msgs.json').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }).then(function (d) {
       d = d || {};
