@@ -94,6 +94,12 @@ header .estado b { font-weight: 600; }
 }
 .btn:active { background: var(--press); }
 .btn.pri { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.quien { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--muted); font-size: 14px; }
+.quien button { appearance: none; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.quien button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.qfila { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.qfila .qn { min-width: 0; overflow-wrap: anywhere; }
+.qfila .qn small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
 .btn.chico { min-height: 36px; padding: 6px 10px; font-size: 14px; }
 .btn[disabled] { opacity: .45; }
 #btnAtras { padding: 4px 8px; min-width: 38px; display: inline-flex; align-items: center; justify-content: center; }
@@ -335,6 +341,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <label class="campoc">Código y cantidad, uno por línea
         <textarea id="pedTxt" rows="5" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="9789501293982 2&#10;9788426481955 1"></textarea></label>
       <label class="campoc">Para (vacío = todos)<input id="pedPara" type="text" autocomplete="off" placeholder="Todos"></label>
+      <div id="pedQuien" class="quien" aria-label="Conectados ahora"></div>
       <div class="acciones"><button class="btn pri ancho" id="pedEnviar" type="button">Enviar pedido</button></div>
     </div>
     <div id="pedCont"></div>
@@ -438,6 +445,8 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <div class="nota" style="margin-top:10px">PIN de pedidos: con ese PIN el teléfono consulta y además arma y manda pedidos (no cuenta).</div>
       <label class="campoc">PIN de pedidos<input id="admPinP" type="password" inputmode="numeric" autocomplete="off" maxlength="12"></label>
       <button class="btn" id="admGuardarP" type="button">Guardar PIN de pedidos</button>
+      <div class="nota" style="margin-top:10px">Conectados (últimas 24 h). «Echar» desconecta ese dispositivo de la nube: para volver tiene que escribir la clave de nuevo.</div>
+      <div id="admQuien" class="wrap" style="gap:6px"></div>
     </div>
   </div>
 </div>
@@ -708,7 +717,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       $('vista' + v).hidden = !on; $('tab' + v).setAttribute('aria-selected', on);
     });
     if (cual === 'mov') pintarMov();
-    if (cual === 'pedidos') pintarPedidos();
+    if (cual === 'pedidos') { pintarPedidos(); bajarPresencia(); }
     if (cual === 'nube') pintarNube();
   }
   function pintarVacio() {
@@ -1493,6 +1502,79 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('fUbic').addEventListener('click', editarUbic);
 
   /* ---------- quién está conectado ---------- */
+  var PRES = {};
+  function bajarPresencia() {
+    if (!nubeOn()) { PRES = {}; pintarQuien(); return Promise.resolve(); }
+    return fetch(nubeBase() + '/presencia.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      PRES = d && typeof d === 'object' ? d : {}; pintarQuien(); pintarAdmQuien();
+    }).catch(function () {});
+  }
+  function conectados(maxMin) {                                         // [{dev, n, t}] del más reciente al más viejo
+    var ahora = Date.now(), l = [];
+    Object.keys(PRES).forEach(function (k) {
+      var o = PRES[k];
+      if (o && o.t && ahora - o.t <= maxMin * 60000) l.push({ dev: k, n: String(o.n || '(sin nombre)'), t: o.t });
+    });
+    return l.sort(function (a, b) { return b.t - a.t; });
+  }
+  function pintarQuien() {                                              // los nombres conectados ahora, para elegir en «Para»
+    var box = $('pedQuien'); if (!box) return;
+    box.innerHTML = '';
+    var vistos = {}, cuenta = {}, l = conectados(3).filter(function (x) { return x.dev !== CFG.dev; });
+    l.forEach(function (x) { var k = normNombre(x.n); cuenta[k] = (cuenta[k] || 0) + 1; });
+    var actual = normNombre($('pedPara').value), hay = 0;
+    l.forEach(function (x) {
+      var k = normNombre(x.n); if (vistos[k]) return; vistos[k] = 1; hay++;
+      var b = document.createElement('button'); b.type = 'button';
+      b.textContent = x.n + (cuenta[k] > 1 ? ' ×' + cuenta[k] : '');
+      b.setAttribute('aria-pressed', actual === k ? 'true' : 'false');
+      b.addEventListener('click', function () { $('pedPara').value = actual === k ? '' : x.n; pintarQuien(); });
+      box.appendChild(b);
+    });
+    if (!hay) { var t = document.createElement('span'); t.textContent = nubeOn() ? 'No hay nadie más conectado ahora.' : ''; box.appendChild(t); }
+  }
+  function pintarAdmQuien() {
+    var box = $('admQuien'); if (!box || $('admPanel').hidden) return;
+    box.innerHTML = '';
+    var l = conectados(24 * 60);
+    if (!l.length) { box.textContent = 'No hay nadie registrado.'; return; }
+    l.forEach(function (x) {
+      var propio = x.dev === CFG.dev, f = document.createElement('div'); f.className = 'qfila';
+      var n = document.createElement('div'); n.className = 'qn';
+      n.innerHTML = '<b></b><small></small>'; n.firstChild.textContent = x.n + (propio ? ' (este)' : '');
+      n.lastChild.textContent = hace(x.t) + ' · ' + x.dev;
+      f.appendChild(n);
+      if (!propio) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'btn chico'; b.textContent = 'Echar';
+        var tm = null;
+        b.addEventListener('click', function () {
+          if (!tm) { b.textContent = '¿Seguro?'; tm = setTimeout(function () { tm = null; b.textContent = 'Echar'; }, 3000); return; }
+          clearTimeout(tm); tm = null; b.disabled = true; echar(x);
+        });
+        f.appendChild(b);
+      }
+      box.appendChild(f);
+    });
+  }
+  function echar(x) {
+    var q = encodeURIComponent(x.dev);
+    fetch(nubeBase() + '/echados/' + q + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: Date.now(), por: CFG.nombre || '' }) })
+      .then(function (r) { if (!r.ok) throw new Error('http'); return fetch(nubeBase() + '/presencia/' + q + '.json', { method: 'DELETE' }); })
+      .then(function () { delete PRES[x.dev]; toast('Echado: ' + x.n); pintarAdmQuien(); pintarQuien(); })
+      .catch(function () { toast('No pude echarlo: sin conexión'); pintarAdmQuien(); });
+  }
+  function revisarEchado() {                                            // si el administrador me echó, me desconecto
+    if (!nubeOn()) return Promise.resolve();
+    return fetch(nubeBase() + '/echados/' + encodeURIComponent(CFG.dev || 'x') + '.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d || !d.t) return;
+      var visto = 0; try { visto = parseInt(localStorage.getItem('echadoT') || '0', 10) || 0; } catch (e) {}
+      fetch(nubeBase() + '/echados/' + encodeURIComponent(CFG.dev || 'x') + '.json', { method: 'DELETE' }).catch(function () {});
+      if (d.t <= visto) return;
+      try { localStorage.setItem('echadoT', String(d.t)); } catch (e) {}
+      CFG.activo = false; CFG.clave = ''; guardarCfg(); cerrarFlujo(); NUBE.listo = false; NUBE.remota = null; estadoNube('apagada');
+      toast('Te desconectaron de la nube');
+    }).catch(function () {});
+  }
   function hace(t) {
     var m = Math.round((Date.now() - t) / 60000);
     return m < 1 ? 'recién' : m < 60 ? 'hace ' + m + ' min' : 'hace ' + Math.round(m / 60) + ' h';
@@ -1611,8 +1693,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     return uno().then(function () { if (hechas) toast('✓ ' + hechas + (hechas === 1 ? ' foto subida' : ' fotos subidas')); }, function () {})
       .then(function () { fotoSubiendo = false; if (!$('fotoPanel').hidden) pintarFotoEstado(); });
   }
-  setInterval(function () { latir(); bajarUbic(); bajarBase(); subirFotos(); }, 30000);
-  setTimeout(function () { latir(); bajarUbic(); bajarBase(); }, 3000);
+  setInterval(function () { revisarEchado().then(latir); bajarPresencia(); bajarUbic(); bajarBase(); subirFotos(); }, 30000);
+  setTimeout(function () { revisarEchado().then(latir); bajarPresencia(); bajarUbic(); bajarBase(); }, 3000);
 
   /* ---------- mensajes de la PC ---------- */
   var MSGV = {}, MSGQ = [], MSGINI = false;
@@ -1827,6 +1909,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       .then(function () { $('pedEnviar').disabled = false; });
   }
   $('pedEnviar').addEventListener('click', enviarPedido);
+  $('pedPara').addEventListener('input', pintarQuien);
   function abrirPedido(id) { PEDABIERTO = id; pestana('pedidos'); window.scrollTo({ top: 0 }); bajarHechos(); }
   function bajarMsgs() {
     enviarAcks();
@@ -2343,6 +2426,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (window.ResizeObserver) new ResizeObserver(medir).observe(f);
     window.addEventListener('resize', medir); medir();
   })();
+  function limpiarTodo() {
+    if (pend) { toast('Primero confirmá con Ok o dejá el cambio en cero'); return; }
+    $('q').value = ''; limpiarFiltros(); nuevaBusqueda();
+  }
   function enfocarBuscar() { setTimeout(function () { var q = $('q'); q.focus(); q.select(); }, 0); }   // después del evento: así la tecla no se escribe en el cuadro
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.altKey || e.metaKey) return;
@@ -2359,12 +2446,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       e.preventDefault(); return;
     }
     if (enQ) {
-      if (k === 'Escape') { if ($('q').value) { $('q').value = ''; nuevaBusqueda(); } else $('q').blur(); e.preventDefault(); }
+      if (k === 'Escape') { if ($('q').value || hayFiltro() || sel >= 0) limpiarTodo(); else $('q').blur(); e.preventDefault(); }
       return;
     }
     if (k === '/') { enfocarBuscar(); e.preventDefault(); return; }
-    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc quita el filtro'); e.preventDefault(); return; }
-    if (k === 'Escape' && FILTRO_AUT) { FILTRO_AUT = ''; FILTRO_AUTNOM = ''; nuevaBusqueda(); e.preventDefault(); return; }
+    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc borra búsqueda y filtros'); e.preventDefault(); return; }
+    if (k === 'Escape') { limpiarTodo(); enfocarBuscar(); e.preventDefault(); return; }       // Esc: borra la búsqueda y los filtros, y queda listo para escribir
     if ((k === 'h' || k === 'H') && sel >= 0) { abrirHist(); e.preventDefault(); return; }
     if (k === 's' || k === 'S') { $('btnCero').click(); e.preventDefault(); return; }   // S: con Stock
     if (t === 'BUTTON') return;                                          // Enter sobre un botón enfocado lo activa él
@@ -2435,6 +2522,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       : n === 'conteo' ? 'Podés contar. Con el PIN de administrador pasás a administrador.'
       : n === 'pedidos' ? 'Consultás el stock y mandás pedidos, pero no contás. Con otro PIN cambiás de modo.' : 'Solo consulta. Escribí un PIN para cambiar de modo.';
     $('admPanel').hidden = false;
+    if (n === 'admin') { pintarAdmQuien(); bajarPresencia(); }
     if (n !== 'admin' && nubeOn()) {
       leerPin('admin').then(function (d) {
         if (!$('admPanel').hidden && !d) { ADMNUEVO = true; $('admTxt').textContent = 'Todavía no hay PIN de administrador. Elegí uno (4 a 12 números).'; $('admOk').textContent = 'Guardar PIN'; }
