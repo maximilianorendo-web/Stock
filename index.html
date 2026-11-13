@@ -2220,7 +2220,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     SOLO_CERO = !SOLO_CERO; this.setAttribute('aria-pressed', SOLO_CERO); nuevaBusqueda();
   });
   $('q').addEventListener('input', function () { clearTimeout(tq); tq = setTimeout(nuevaBusqueda, 160); });
-  $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(tq); nuevaBusqueda(); this.blur(); if (ANCHO.matches && res.length === 1) irResultado(0); } });
+  $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(tq); nuevaBusqueda(); this.blur(); if ((ANCHO.matches || !puedeContar()) && res.length === 1) { irResultado(0); if (!puedeContar() && sel >= 0) abrirTapa(); } } });
   $('borrarQ').addEventListener('click', function () { $('q').value = ''; nuevaBusqueda(); $('q').focus(); });
   var REC = null, SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   function dictar() {
@@ -2351,7 +2351,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       return;
     }
     if (k === '/') { enfocarBuscar(); e.preventDefault(); return; }
-    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · S con stock · H movimientos · + − Ok · Esc quita el filtro'); e.preventDefault(); return; }
+    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc quita el filtro'); e.preventDefault(); return; }
     if (k === 'Escape' && FILTRO_AUT) { FILTRO_AUT = ''; FILTRO_AUTNOM = ''; nuevaBusqueda(); e.preventDefault(); return; }
     if ((k === 'h' || k === 'H') && sel >= 0) { abrirHist(); e.preventDefault(); return; }
     if (k === 's' || k === 'S') { $('btnCero').click(); e.preventDefault(); return; }   // S: con Stock
@@ -2362,10 +2362,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       e.preventDefault(); return;
     }
     if (sel < 0) return;
+    if (k === ' ') { abrirTapa(); e.preventDefault(); return; }               // barra espaciadora: la tapa en grande
     if (/^[0-9]$/.test(k)) { editarCant(''); return; }                   // tipear un número abre el cuadro de cantidad
     if (k === '+' || k === '=') { cambiar(1); e.preventDefault(); }
     else if (k === '-') { cambiar(-1); e.preventDefault(); }
-    else if (k === 'Enter') { confirmar(); e.preventDefault(); }
+    else if (k === 'Enter') { if (puedeContar()) confirmar(); else abrirTapa(); e.preventDefault(); }
+  });
+  document.addEventListener('keydown', function (e) {       // Enter o espacio con la tapa grande abierta la cierran
+    if ((e.key === 'Enter' || e.key === ' ') && !e.defaultPrevented && !$('tapaPanel').hidden && !(e.target && e.target.tagName === 'BUTTON')) { e.preventDefault(); cerrarTapa(); }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); cerrarAdmin(); cerrarHist(); } });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && NUBE.listo) { bajar(); subirPendientes(); } });
