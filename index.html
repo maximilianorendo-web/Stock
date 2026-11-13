@@ -64,6 +64,12 @@ header h1 { display: none; }
 header .estado { flex: 1; min-width: 0; font-size: 11px; opacity: .8; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 header .estado b, header .estado span { display: block; overflow: hidden; text-overflow: ellipsis; }
 header .estado b { font-weight: 600; }
+/* Ventana angosta pero con mouse (PC): la ficha queda fija arriba mientras se baja por la lista */
+@media (max-width: 899px) and (hover: hover) and (pointer: fine) {
+  #vistaBuscar > #ficha { position: sticky; top: 0; z-index: 6; box-shadow: 0 8px 14px -6px rgba(0,0,0,.28); }
+  .mini { height: 150px; }
+  #resultados .fila { scroll-margin-top: var(--fh, 0px); }
+}
 /* Pantalla ancha (computadora): lista a la izquierda y ficha fija a la derecha, sin tocar nada del celular */
 @media (min-width: 900px) {
   body { font-size: 17px; }
@@ -2331,6 +2337,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (j === i) { toast(d > 0 ? 'Es el último de los resultados' : 'Es el primero de los resultados'); return; }
     irResultado(j);
   }
+  (function () {                                                         // alto de la ficha fija → margen para que la fila elegida no quede tapada
+    var f = $('ficha');
+    function medir() { try { document.documentElement.style.setProperty('--fh', (f.hidden ? 0 : f.offsetHeight + 10) + 'px'); } catch (e) {} }
+    if (window.ResizeObserver) new ResizeObserver(medir).observe(f);
+    window.addEventListener('resize', medir); medir();
+  })();
   function enfocarBuscar() { setTimeout(function () { var q = $('q'); q.focus(); q.select(); }, 0); }   // después del evento: así la tecla no se escribe en el cuadro
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.altKey || e.metaKey) return;
