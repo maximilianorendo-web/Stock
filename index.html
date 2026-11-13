@@ -359,6 +359,10 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
   <section id="vistaNube" class="wrap" style="gap:12px" hidden>
     <div class="aviso">Stock</div>
     <label class="sin-lbl" style="display:flex;gap:10px;align-items:center;font-weight:600"><input type="checkbox" id="aTapa" style="width:22px;height:22px"> Mostrar la tapa en la ficha del libro</label>
+    <div id="aDirBox" class="wrap" style="gap:6px" hidden>
+      <div class="acciones"><button class="btn" id="aDir" type="button">Elegir carpeta de tapas de esta PC</button><button class="btn" id="aDirQ" type="button" hidden>Quitar</button></div>
+      <div id="aDirEst" class="nota"></div>
+    </div>
     <label class="campoc">Dirección de la base (Firebase)<input id="nUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://tu-proyecto-default-rtdb.firebaseio.com"></label>
     <label class="campoc">Clave<input id="nClave" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="una palabra larga que sepan solo ustedes"></label>
     <label class="campoc">Nombre<input id="nNombre" type="text" autocomplete="off" placeholder="Maxi"></label>
@@ -1313,9 +1317,16 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var img = $('tapaImg'), msg = $('tapaMsg');
     img.hidden = true; img.removeAttribute('src'); msg.hidden = false; msg.textContent = 'Buscando la tapa…';
     $('tapaPanel').hidden = false;
-    cargarTapas().then(function () {
+    (TAPADIR ? tapaLocal(k, 'tapaImg') : Promise.resolve(null)).then(function (u) {
       if (tapaSel !== k) return;
-      if (!TAPAMAP) { msg.textContent = 'Todavía no hay tapas cargadas. Hay que traerlas desde MR System (STOCK → TAPAS), y este celu tiene que estar conectado a la Nube.'; return; }
+      if (u) {
+        img.onload = function () { if (tapaSel === k) msg.hidden = true; };
+        img.onerror = function () { if (tapaSel === k) { img.hidden = true; msg.hidden = false; msg.textContent = 'No pude abrir el archivo de la carpeta.'; } };
+        img.src = u; img.hidden = false; return;
+      }
+      return cargarTapas().then(function () {
+      if (tapaSel !== k) return;
+      if (!TAPAMAP) { msg.textContent = 'Todavía no hay tapas cargadas. Hay que traerlas desde MR System (STOCK → TAPAS), y este teléfono tiene que estar conectado a la Nube.'; return; }
       var cods = codigosTapa(k), suf = null;
       for (var i = 0; i < cods.length && suf == null; i++) if (cods[i] in TAPAMAP) suf = TAPAMAP[cods[i]];
       if (suf == null) { msg.textContent = 'Este libro no tiene tapa en la tienda.'; return; }
@@ -1323,6 +1334,70 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       img.onerror = function () { if (tapaSel === k) { img.hidden = true; msg.hidden = false; msg.textContent = 'No pude cargar la foto (sin internet, o la tienda no la entrega).'; } };
       msg.textContent = 'Cargando la foto…';
       img.src = TAPAPRE + suf; img.hidden = false;
+      });
+    });
+  }
+  /* ---------- tapas guardadas en esta PC (Chrome/Edge): si la carpeta de tapas de MR System está acá, se leen de ahí ---------- */
+  var TAPADIR = null, TAPABLOB = {};
+  var SOPORTA_DIR = typeof window.showDirectoryPicker === 'function';
+  function nombreTapa(c) { return String(c).replace(/[<>:"\/\\|?*]+/g, '').trim(); }
+  function permisoDir(pedir) {
+    if (!TAPADIR || !TAPADIR.queryPermission) return Promise.resolve(false);
+    return TAPADIR.queryPermission({ mode: 'read' }).then(function (p) {
+      if (p === 'granted') return true;
+      if (p === 'prompt' && pedir) return TAPADIR.requestPermission({ mode: 'read' }).then(function (q) { return q === 'granted'; });
+      return false;
+    }).catch(function () { return false; });
+  }
+  function archivoTapa(k) {
+    // [{cod}] -> primer archivo <código>.jpg/.jpeg/.png/.webp que exista en la carpeta
+    var cods = codigosTapa(k).map(nombreTapa).filter(Boolean), exts = ['.jpg', '.jpeg', '.png', '.webp'], cand = [];
+    cods.forEach(function (c) { exts.forEach(function (e) { cand.push(c + e); }); });
+    var i = 0;
+    function sig() {
+      if (i >= cand.length) return Promise.resolve(null);
+      var n = cand[i++];
+      return TAPADIR.getFileHandle(n).then(function (fh) { return fh.getFile(); }, function () { return sig(); });
+    }
+    return sig();
+  }
+  function tapaLocal(k, clave) {
+    if (!TAPADIR) return Promise.resolve(null);
+    return permisoDir(false).then(function (ok) {
+      if (!ok) return null;
+      return archivoTapa(k).then(function (f) {
+        if (!f) return null;
+        if (TAPABLOB[clave]) { try { URL.revokeObjectURL(TAPABLOB[clave]); } catch (e) {} }
+        return (TAPABLOB[clave] = URL.createObjectURL(f));
+      });
+    }).catch(function () { return null; });
+  }
+  function pintarDirEst() {
+    var box = $('aDirBox'); if (!box) return;
+    box.hidden = !SOPORTA_DIR;
+    if (!SOPORTA_DIR) return;
+    $('aDirQ').hidden = !TAPADIR;
+    $('aDir').textContent = TAPADIR ? 'Cambiar la carpeta de tapas' : 'Elegir carpeta de tapas de esta PC';
+    if (!TAPADIR) { $('aDirEst').textContent = 'Si las tapas de MR System están en esta PC, elegí esa carpeta y Aleph las lee de ahí (sin internet y más rápido). Si falta alguna, la busca en la tienda.'; return; }
+    permisoDir(false).then(function (ok) {
+      $('aDirEst').textContent = 'Carpeta: ' + (TAPADIR.name || '') + (ok ? ' · lista.' : ' · falta el permiso: tocá cualquier lugar de la pantalla y aceptá.');
+    });
+  }
+  if (SOPORTA_DIR) {
+    leer('tapadir').then(function (h) {
+      if (!h) { pintarDirEst(); return; }
+      TAPADIR = h; pintarDirEst();
+      // el permiso solo se puede pedir con un toque del usuario: se pide una vez, en el primero
+      var pedir = function () { document.removeEventListener('pointerdown', pedir, true); permisoDir(true).then(function () { miniK = -2; pintarDirEst(); try { pintarMini(); } catch (e) {} }); };
+      permisoDir(false).then(function (ok) { if (!ok) document.addEventListener('pointerdown', pedir, true); });
+    });
+    $('aDir').addEventListener('click', function () {
+      window.showDirectoryPicker({ id: 'tapas-mr', mode: 'read' }).then(function (h) {
+        TAPADIR = h; return guardar('tapadir', h);
+      }).then(function () { miniK = -2; pintarDirEst(); toast('Carpeta de tapas elegida'); try { pintarMini(); } catch (e) {} }, function () {});
+    });
+    $('aDirQ').addEventListener('click', function () {
+      TAPADIR = null; guardar('tapadir', null); miniK = -2; pintarDirEst(); try { pintarMini(); } catch (e) {}
     });
   }
   var TAPAAUTO = true, miniK = -2;
@@ -1346,7 +1421,16 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       im.src = TAPAPRE + suf;
     }
     im.hidden = true; im.removeAttribute('src');
-    if (TAPAMAP) poner(); else cargarTapas().then(poner);
+    function web() { if (TAPAMAP) poner(); else cargarTapas().then(poner); }
+    if (!TAPADIR) { web(); return; }
+    tapaLocal(k, im.id).then(function (u) {
+      if (sel !== k) return;
+      if (!u) { web(); return; }
+      miniK = k;
+      im.onerror = function () { im.hidden = true; };
+      im.onload = function () { if (sel === k) im.hidden = false; };
+      im.src = u;
+    });
   }
   if (ANCHO.addEventListener) ANCHO.addEventListener('change', function () { miniK = -2; pintarMini(); });
   $('fMini').addEventListener('click', abrirTapa);
