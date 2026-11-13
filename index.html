@@ -111,8 +111,10 @@ body.consulta #fDep { pointer-events: none; }
 }
 .buscador input:focus { border-color: var(--accent); outline: none; }
 .buscador .x { position: absolute; right: 4px; top: 4px; width: 44px; height: 44px; border: 0; background: transparent; color: var(--muted); font-size: 22px; cursor: pointer; }
-.ficha { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.ficha { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; }
 .ficha h2 { font-size: 18px; line-height: 1.2; margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
+.ficha .isbn { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; letter-spacing: .02em; margin-top: -4px; }
+.ficha .isbn:empty { display: none; }
 .ficha .sub { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 .dep { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .dep .rot { font-size: 15px; color: var(--muted); font-weight: 600; }
@@ -127,9 +129,9 @@ body.consulta #fDep { pointer-events: none; }
 .fofila .fcam { width: 44px; height: 40px; border: 1px solid #c9ccd6; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: inherit; }
 .fofila .fcnt { font-size: 13px; opacity: .7; }
 .fofila .fcnt.ok { opacity: 1; font-weight: 600; }
-.fcuerpo { display: flex; align-items: center; gap: 12px; }
+.fcuerpo { display: flex; align-items: center; gap: 10px; }
 .fdatos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.mini { flex: none; height: 128px; max-width: 40%; width: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25); background: #fff; cursor: pointer; }
+.mini { flex: none; height: 176px; max-width: 46%; width: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25); background: #fff; cursor: pointer; }
 .tapa-caja { display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 120px; }
 #tapaImg { max-width: 100%; max-height: 68vh; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.25); background: #fff; }
 .ubic { margin-top: 8px; }
@@ -299,13 +301,14 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 
     <div id="ficha" class="ficha" hidden>
       <h2 id="fTit"></h2>
+      <div class="isbn" id="fCod"></div>
       <div class="sub" id="fSub"></div>
       <div class="visto" id="fVisto" hidden></div>
       <div class="fcuerpo"><div class="fdatos">
       <div class="dep" aria-live="polite">
         <span class="rot">Dep 1:</span><button type="button" class="num" id="fDep" aria-label="Tocá para escribir cuántos hay">0</button><input id="fIn" class="num-in" type="number" inputmode="numeric" min="0" max="99999" step="1" aria-label="Cuántos hay" hidden><span class="nuevo" id="fNuevo" hidden></span>
       </div>
-      <div class="otros"><span id="fDep11"></span><span id="fPvp"></span><span id="fCod"></span></div>
+      <div class="otros"><span id="fDep11"></span><span id="fPvp"></span></div>
       </div><img id="fMini" class="mini" alt="Tapa" referrerpolicy="no-referrer" hidden></div>
       <div class="ubic"><button type="button" class="btn chico" id="fUbic" aria-label="Ubicación del libro"></button> <button type="button" class="btn chico" id="fTapa">Tapa</button> <button type="button" class="btn chico" id="fHist" aria-label="Movimientos de este libro" title="Movimientos de este libro (H)" hidden>🕘 Movimientos</button></div>
       <div class="tres">
@@ -1378,7 +1381,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!SOPORTA_DIR) return;
     $('aDirQ').hidden = !TAPADIR;
     $('aDir').textContent = TAPADIR ? 'Cambiar la carpeta de tapas' : 'Elegir carpeta de tapas de esta PC';
-    if (!TAPADIR) { $('aDirEst').textContent = 'Si las tapas de MR System están en esta PC, elegí esa carpeta y Aleph las lee de ahí (sin internet y más rápido). Si falta alguna, la busca en la tienda.'; return; }
+    if (!TAPADIR) { $('aDirEst').textContent = ''; return; }
     permisoDir(false).then(function (ok) {
       $('aDirEst').textContent = 'Carpeta: ' + (TAPADIR.name || '') + (ok ? ' · lista.' : ' · falta el permiso: tocá cualquier lugar de la pantalla y aceptá.');
     });
