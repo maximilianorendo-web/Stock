@@ -267,6 +267,22 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 .rev .dif { font-weight: 800; min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
 .rev .dif.mas { color: var(--good); } .rev .dif.menos { color: var(--bad); }
 @media (prefers-reduced-motion: no-preference) { .tres button { transition: filter .1s; } }
+.mapa { position: relative; display: grid; gap: 0; padding: 8px; border: 1.5px solid var(--line); border-radius: 12px;
+  background-color: var(--panel); background-image: radial-gradient(var(--line) 1px, transparent 1.2px); background-size: 6px 6px;
+  grid-template-columns: 1fr .35fr 1fr 1fr .35fr 1fr 1fr .35fr 1fr 1fr .35fr 1.5fr 1.5fr;
+  grid-template-rows: repeat(3, 52px) 14px repeat(4, 52px) 14px repeat(3, 52px); }
+.mapa .mod { appearance: none; margin: 0; padding: 0; font: inherit; color: var(--ink); background: var(--panel); border: 1.5px solid var(--ink); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; text-align: center; min-width: 0; }
+.mapa .mod .in { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; }
+.mapa .mod.v .in { writing-mode: vertical-rl; transform: rotate(180deg); flex-direction: column-reverse; }
+.mapa .mod b { font-size: 12px; }
+.mapa .mod small { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mapa .mod.on { background: var(--accent-soft); }
+.mapa .mod.on small { color: var(--accent); font-weight: 700; }
+.mapa .mod:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; z-index: 2; }
+.mapa .bloque { display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--ink); color: var(--muted); font-weight: 800; letter-spacing: 2px; font-size: 13px;
+  background: repeating-linear-gradient(45deg, transparent 0 5px, var(--line) 5px 6px); }
+.mapa .sep { margin-top: 10px; }
 </style>
 
 </head><body>
@@ -302,6 +318,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <div class="sins">
       <button class="sin" id="btnSin" type="button" aria-pressed="false" title="Mostrar solo los libros que todavía no se contaron">Sin contar</button>
       <button class="sin" id="btnCero" type="button" aria-pressed="false" title="Mostrar solo los libros con stock en el sistema">Con stock</button>
+      <button class="sin" id="btnMapa" type="button" title="Mapa del depósito: qué módulos ya tienen libros ubicados (M)">Mapa</button>
       <button class="sin" id="btnEstantes" type="button" title="Ver las ubicaciones y los libros de cada una (E)">Estantes</button>
       <button class="sin" id="btnUbi" type="button" aria-pressed="false" aria-label="Ubicación fija" title="Ubicación donde estás contando: se les pone a todos los libros que cuentes">📍</button>
       <button class="sin" id="btnFoto" type="button" hidden aria-label="Foto de estante" title="Foto de estante: subir fotos de los lomos para ponerles ubicación"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M3 11.5h18"/><path d="M5.5 11.5V6M8.5 11.5V4M11.5 11.5V7M14.5 11.5V5.5"/><path d="M5.5 21v-5M9 21v-7M12.5 21v-4.5M16 21v-6M19 21v-4"/></svg></button>
@@ -463,6 +480,17 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <button class="btn" id="ubCerrar" type="button">Cancelar</button>
     </div>
     <div id="ubAyuda" class="nota"></div>
+  </div>
+</div>
+<div id="mpPanel" class="panel" hidden>
+  <div class="panel-in" style="max-width:640px">
+    <div class="aviso">Mapa del depósito</div>
+    <label class="campoc">Ir a un módulo<input id="mpIr" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ej.: D7, B10 o PC"></label>
+    <div id="mpRes" class="nota"></div>
+    <div id="mpMapa" class="mapa"></div>
+    <div id="mpOtros" class="nota"></div>
+    <div class="nota">Azul: módulo con libros ubicados (el número es la cantidad de libros). Tocá un módulo para ver sus niveles y libros · Enter en el cuadro abre el módulo · Esc cierra</div>
+    <button class="btn" id="mpCerrar" type="button">Cerrar</button>
   </div>
 </div>
 <div id="uePanel" class="panel" hidden>
@@ -1584,7 +1612,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('fUbic').addEventListener('click', editarUbic);
 
   /* ---------- estantes: el listado de ubicaciones, los libros de cada una y renombrarla (admin) ---------- */
-  var UE = { todas: [], vis: [], i: 0, cur: null };
+  var UE = { todas: [], vis: [], i: 0, cur: null, modulo: '', desdeMapa: false };
+  function moduloDe(u) {                                  // «B-10-3» → «B-10» · «pc» → «PC» · lo que no sigue el esquema → ''
+    var n = normUb(u), m = /^([a-z])\s*-\s*(\d{1,2})(?=$|[\s-])/.exec(n);
+    if (m) return m[1].toUpperCase() + '-' + parseInt(m[2], 10);
+    return /^pc(?=$|[\s-])/.test(n) ? 'PC' : '';
+  }
   function ueEstantes() {
     var m = {};
     for (var i = 0; i < S.pos.length; i++) {
@@ -1612,10 +1645,13 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function ueDibujarLista() {
     var q = normUb($('ueQ').value), lista = $('ueLista'); lista.innerHTML = '';
-    UE.vis = UE.todas.filter(function (o) { return !q || o.n.indexOf(q) >= 0; });
+    UE.vis = UE.todas.filter(function (o) {
+      if (UE.modulo === '-' ? moduloDe(o.nom) : UE.modulo && moduloDe(o.nom) !== UE.modulo) return false;
+      return !q || o.n.indexOf(q) >= 0;
+    });
     if (UE.i >= UE.vis.length) UE.i = Math.max(0, UE.vis.length - 1);
     var libros = UE.vis.reduce(function (a, o) { return a + o.idx.length; }, 0);
-    $('ueRes').textContent = UE.todas.length ? UE.vis.length + (UE.vis.length === 1 ? ' estante' : ' estantes') + ' · ' + libros + ' libros' : 'Todavía no hay libros con ubicación.';
+    $('ueRes').textContent = UE.todas.length ? (UE.modulo === '-' ? 'Fuera del plano · ' : UE.modulo ? 'Módulo ' + UE.modulo + ' · ' : '') + UE.vis.length + (UE.vis.length === 1 ? ' estante' : ' estantes') + ' · ' + libros + ' libros' : 'Todavía no hay libros con ubicación.';
     UE.vis.slice(0, 400).forEach(function (o, i) {
       var r = ueFila(o.nom, Object.keys(o.nombres).length > 1 ? Object.keys(o.nombres).length + ' escrituras distintas' : '', o.idx.length, function () { UE.i = i; ueDetalle(o); });
       if (i === UE.i) r.style.background = 'var(--accent-soft)';
@@ -1630,8 +1666,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     for (var j = 0; j < hijos.length; j++) hijos[j].style.background = j === UE.i ? 'var(--accent-soft)' : '';
     if (hijos[UE.i] && hijos[UE.i].scrollIntoView) hijos[UE.i].scrollIntoView({ block: 'nearest' });
   }
-  function ueAbrir() {
+  function ueAbrir(modulo, desdeMapa) {
     if (!S) { toast('Todavía no hay datos cargados'); return; }
+    UE.modulo = typeof modulo === 'string' ? modulo : ''; UE.desdeMapa = !!desdeMapa;
     UE.todas = ueEstantes(); UE.i = 0; UE.cur = null;
     $('ueQ').value = ''; $('ueVistaL').hidden = false; $('ueVistaD').hidden = true;
     ueDibujarLista(); $('uePanel').hidden = false; $('ueQ').focus();
@@ -1666,18 +1703,17 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     toast('📍 ' + o.idx.length + ' libros ahora en ' + v);
     var nuevoN = normUb(v);
     UE.todas = ueEstantes(); UE.cur = null;
-    var ahora = UE.todas.filter(function (x) { return x.n === nuevoN; })[0];
     $('ueQ').value = ''; $('ueVistaD').hidden = true; $('ueVistaL').hidden = false;
-    UE.i = Math.max(0, UE.todas.indexOf(ahora)); ueDibujarLista(); ueMarcar(0); $('ueQ').focus();
+    UE.i = 0; ueDibujarLista(); var pos = UE.vis.filter(function (x) { return x.n === nuevoN; })[0]; UE.i = Math.max(0, UE.vis.indexOf(pos)); ueDibujarLista(); $('ueQ').focus();
   }
-  function ueIrALibro(k) { cerrarUe(); $('q').value = S.cod[k]; nuevaBusqueda(); }
+  function ueIrALibro(k) { UE.desdeMapa = false; cerrarUe(); $('q').value = S.cod[k]; nuevaBusqueda(); }
   function cerrarUe() { $('uePanel').hidden = true; UE.cur = null; }
   function ueAtras() {                       // un paso atrás: del estante a la lista, y de la lista a cerrar. true si hizo algo
     if ($('uePanel').hidden) return false;
     if (!$('ueVistaD').hidden) { $('ueVistaD').hidden = true; $('ueVistaL').hidden = false; UE.cur = null; $('ueQ').focus(); return true; }
-    cerrarUe(); return true;
+    cerrarUe(); if (UE.desdeMapa) { UE.desdeMapa = false; mpAbrir(); } return true;
   }
-  $('btnEstantes').addEventListener('click', ueAbrir);
+  $('btnEstantes').addEventListener('click', function () { ueAbrir(); });
   $('ueCerrar').addEventListener('click', cerrarUe);
   $('ueVolver').addEventListener('click', ueAtras);
   $('ueOk').addEventListener('click', ueRenombrar);
@@ -1693,6 +1729,83 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (e.key === 'Enter') { e.preventDefault(); ueRenombrar(); }
     else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ueAtras(); }
   });
+  /* ---------- mapa del depósito ---------- */
+  var MP_FILAS = { 10: 1, 9: 2, 8: 3, 7: 5, 6: 6, 5: 7, 4: 8, 3: 10, 2: 11, 1: 12 };       // número de módulo -> fila de la grilla
+  var MP_COLS = { A: 1, B: 3, C: 4, D: 6, E: 7, F: 9, G: 10 };                              // letra de fila de estantes -> columna
+  var MP_MODS = (function () {
+    var l = [];
+    Object.keys(MP_COLS).forEach(function (L) {
+      for (var n = 1; n <= 10; n++) {
+        if (L === 'A' && n === 10) continue;
+        var f = MP_FILAS[n]; if (L === 'A' && n >= 4) f = MP_FILAS[n + 1];                 // la fila A está corrida: A-9 queda a la altura de B-10
+        l.push({ id: L + '-' + n, col: MP_COLS[L], fila: f, v: true });
+      }
+    });
+    l.push({ id: 'PC', col: 1, fila: 8, v: true });
+    [['L', 1], ['K', 2], ['J', 3], ['I', 4], ['H', 5]].forEach(function (x) {
+      l.push({ id: x[0] + '-1', col: 1, fila: x[1], lado: true }, { id: x[0] + '-2', col: 2, fila: x[1], lado: true });
+    });
+    return l;
+  })();
+  function mpContar() {
+    var por = {}, otros = { libros: 0, nombres: {} };
+    for (var i = 0; i < S.pos.length; i++) {
+      var u = ubicDe(i); if (!u) continue;
+      var m = moduloDe(u);
+      if (m && MP_MODS.some(function (x) { return x.id === m; })) { var o = por[m] || (por[m] = { libros: 0, niveles: {} }); o.libros++; o.niveles[normUb(u)] = 1; }
+      else { otros.libros++; otros.nombres[normUb(u)] = 1; }
+    }
+    return { por: por, otros: otros };
+  }
+  function mpAbrir() {
+    if (!S) { toast('Todavía no hay datos cargados'); return; }
+    var c = mpContar(), mapa = $('mpMapa'); mapa.innerHTML = '';
+    var con = 0, lado = document.createElement('div');
+    lado.style.cssText = 'grid-column:12 / 14;grid-row:5 / 9;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);margin:0 0 0 6px';
+    mapa.appendChild(lado);
+    MP_MODS.forEach(function (x) {
+      var d = c.por[x.id], b = document.createElement('button'); b.type = 'button';
+      b.className = 'mod' + (x.v ? ' v' : '') + (d ? ' on' : '') + (x.sep ? ' sep' : '');
+      b.style.gridColumn = x.col; b.style.gridRow = x.fila;
+      if (x.lado) b.style.margin = (x.fila === 2 || x.fila === 4 ? '10px' : '0') + ' 0 0 0';
+      b.setAttribute('aria-label', x.id + (d ? ': ' + d.libros + ' libros en ' + Object.keys(d.niveles).length + ' niveles' : ': sin libros ubicados'));
+      b.innerHTML = '<span class="in"><b></b><small></small></span>';
+      b.querySelector('b').textContent = x.id; b.querySelector('small').textContent = d ? d.libros : '';
+      if (d) con++;
+      b.addEventListener('click', function () { mpAbrirModulo(x.id); });
+      (x.lado ? lado : mapa).appendChild(b);
+    });
+    [['ESCALERA', '1 / 4', '11 / 14'], ['DESPACHO', '9 / 13', '11 / 14']].forEach(function (z) {
+      var e = document.createElement('div'); e.className = 'bloque'; e.textContent = z[0]; e.style.gridRow = z[1]; e.style.gridColumn = z[2]; mapa.appendChild(e);
+    });
+    $('mpRes').textContent = con + ' de ' + MP_MODS.length + ' módulos con libros ubicados';
+    var n = Object.keys(c.otros.nombres).length;
+    var o = $('mpOtros'); o.innerHTML = '';
+    if (n) {
+      o.appendChild(document.createTextNode(c.otros.libros + ' libros están en ' + n + (n === 1 ? ' ubicación' : ' ubicaciones') + ' que no siguen el esquema (nombres provisorios u otros). '));
+      var v = document.createElement('button'); v.type = 'button'; v.className = 'btn chico'; v.textContent = 'Verlas';
+      v.addEventListener('click', function () { cerrarMp(); ueAbrir('-', true); });
+      o.appendChild(v);
+    }
+    $('mpIr').value = ''; $('mpPanel').hidden = false; $('mpIr').focus();
+  }
+  function mpAbrirModulo(id) {
+    if (!(mpContar().por[id])) { toast(id + ': todavía sin libros ubicados'); return; }
+    cerrarMp(); ueAbrir(id, true);
+  }
+  function cerrarMp() { $('mpPanel').hidden = true; }
+  function mpAtras() { if ($('mpPanel').hidden) return false; cerrarMp(); return true; }
+  $('btnMapa').addEventListener('click', mpAbrir);
+  $('mpCerrar').addEventListener('click', cerrarMp);
+  $('mpIr').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarMp(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      var t = $('mpIr').value.replace(/\s+/g, '').toUpperCase(), m = /^([A-L])-?(\d{1,2})$/.exec(t), id = t === 'PC' ? 'PC' : m ? m[1] + '-' + parseInt(m[2], 10) : '';
+      if (id && MP_MODS.some(function (x) { return x.id === id; })) mpAbrirModulo(id); else toast('No encuentro ese módulo: probá con D7, B10 o PC');
+    }
+  });
+  $('mpPanel').addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarMp(); } });
   $('ueVistaD').addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ueAtras(); } });
 
   /* ---------- quién está conectado ---------- */
@@ -2627,7 +2740,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function enfocarBuscar() { setTimeout(function () { var q = $('q'); q.focus(); q.select(); }, 0); }   // después del evento: así la tecla no se escribe en el cuadro
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.altKey || e.metaKey) return;
-    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || $('vistaBuscar').hidden) return;
+    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || $('vistaBuscar').hidden) return;
     var t = e.target && e.target.tagName, enQ = e.target && e.target.id === 'q', k = e.key;
     if (e.ctrlKey && (k === 'k' || k === 'K')) { enfocarBuscar(); e.preventDefault(); return; }
     if (e.ctrlKey) return;
@@ -2645,7 +2758,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }
     if (k === '/') { enfocarBuscar(); e.preventDefault(); return; }
     if ((k === 'e' || k === 'E') && t !== 'BUTTON') { ueAbrir(); e.preventDefault(); return; }
-    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · E estantes · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc borra búsqueda y filtros'); e.preventDefault(); return; }
+    if ((k === 'm' || k === 'M') && t !== 'BUTTON') { mpAbrir(); e.preventDefault(); return; }
+    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · E estantes · M mapa · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc borra búsqueda y filtros'); e.preventDefault(); return; }
     if (k === 'Escape') { limpiarTodo(); enfocarBuscar(); e.preventDefault(); return; }       // Esc: borra la búsqueda y los filtros, y queda listo para escribir
     if ((k === 'h' || k === 'H') && sel >= 0) { abrirHist(); e.preventDefault(); return; }
     if (k === 's' || k === 'S') { $('btnCero').click(); e.preventDefault(); return; }   // S: con Stock
@@ -2665,7 +2779,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   document.addEventListener('keydown', function (e) {       // Enter o espacio con la tapa grande abierta la cierran
     if ((e.key === 'Enter' || e.key === ' ') && !e.defaultPrevented && !$('tapaPanel').hidden && !(e.target && e.target.tagName === 'BUTTON')) { e.preventDefault(); cerrarTapa(); }
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); cerrarAdmin(); cerrarHist(); cerrarUb(); ueAtras(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); cerrarAdmin(); cerrarHist(); cerrarUb(); mpAtras(); ueAtras(); } });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && NUBE.listo) { bajar(); subirPendientes(); } });
   window.addEventListener('online', function () { if (nubeOn()) { if (NUBE.listo) { bajar(); subirPendientes(); } else conectar(); } });
 
@@ -2816,6 +2930,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!$('histPanel').hidden) { cerrarHist(); return true; }
     if (!$('fotoPanel').hidden) { cerrarFoto(); return true; }
     if (!$('ubPanel').hidden) { cerrarUb(); return true; }
+    if (!$('mpPanel').hidden) { cerrarMp(); return true; }
     if (!$('uePanel').hidden) { ueAtras(); return true; }
     if (!$('tapaPanel').hidden) { cerrarTapa(); return true; }
     if (!$('revPanel').hidden) { cerrarRev(); return true; }
@@ -2830,7 +2945,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   /* flechita arriba a la izquierda y deslizar hacia la derecha: en iPhone (app instalada) no hay botón ni gesto de volver */
   function hayAtras() {
-    return !$('admPanel').hidden || !$('histPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('revPanel').hidden ||
+    return !$('admPanel').hidden || !$('histPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('revPanel').hidden ||
       !$('scan').hidden || !$('ediPanel').hidden || (!$('vistaPedidos').hidden && !!PEDABIERTO) || $('vistaBuscar').hidden ||
       sel >= 0 || !!$('q').value || hayFiltro();
   }
