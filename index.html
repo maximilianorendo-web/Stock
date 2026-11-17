@@ -191,7 +191,6 @@ body.consulta #fDep { pointer-events: none; }
 .campoc textarea { font: inherit; font-size: 16px; font-weight: 400; color: var(--ink); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 11px 12px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; }
 .campoc textarea:focus { border-color: var(--accent); outline: none; }
 .fila.ped { cursor: default; gap: 10px; }
-.ubp { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 800; white-space: nowrap; vertical-align: 1px; }
 .fila.ped .txt { cursor: pointer; }
 .fila.ped.hecho .t { text-decoration: line-through; color: var(--muted); }
 .chk { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); color: var(--accent-ink); font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
@@ -268,29 +267,6 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 .rev .dif { font-weight: 800; min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
 .rev .dif.mas { color: var(--good); } .rev .dif.menos { color: var(--bad); }
 @media (prefers-reduced-motion: no-preference) { .tres button { transition: filter .1s; } }
-.mapa { position: relative; display: grid; gap: 0; padding: 8px; border: 1.5px solid var(--line); border-radius: 12px;
-  background-color: var(--panel); background-image: radial-gradient(var(--line) 1px, transparent 1.2px); background-size: 6px 6px;
-  grid-template-columns: 1fr .35fr 1fr 1fr .35fr 1fr 1fr .35fr 1fr 1fr .35fr 1.5fr 1.5fr;
-  grid-template-rows: repeat(3, 52px) 14px repeat(4, 52px) 14px repeat(3, 52px); }
-.mapa .mod { appearance: none; margin: 0; padding: 0; font: inherit; color: var(--ink); background: var(--panel); border: 1.5px solid var(--ink); cursor: pointer;
-  display: flex; align-items: center; justify-content: center; text-align: center; min-width: 0; }
-.mapa .mod .in { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; }
-.mapa .mod.v .in { writing-mode: vertical-rl; transform: rotate(180deg); flex-direction: column-reverse; }
-.mapa .mod b { font-size: 12px; }
-.mapa .mod small { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.mapa .mod.on { background: var(--accent-soft); }
-.mapa .mod.on small { color: var(--accent); font-weight: 700; }
-.mapa .mod:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; z-index: 2; }
-.mapa .bloque { display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--ink); color: var(--muted); font-weight: 800; letter-spacing: 2px; font-size: 13px;
-  background: repeating-linear-gradient(45deg, transparent 0 5px, var(--line) 5px 6px); }
-.mapa .sep { margin-top: 10px; }
-.mapa.z2 { grid-template-columns: 78fr 42fr 77fr 45fr; grid-template-rows: repeat(90, 8px); max-width: 300px; margin: 0 auto; }
-.mapa.z2 .mod .in { flex-direction: row; gap: 5px; }
-.mapa.z2 .mod[style*="span 8"] .in b, .mapa.z2 .mod[style*="span 4"] .in b { font-size: 11px; }
-.mapa.auto { display: flex; flex-direction: column; gap: 10px; background-image: none; }
-.mapa.auto .fila { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.mapa.auto .fila .nota { width: 56px; padding: 0; }
-.mapa.auto .mod { width: 70px; height: 54px; }
 </style>
 
 </head><body>
@@ -326,8 +302,6 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <div class="sins">
       <button class="sin" id="btnSin" type="button" aria-pressed="false" title="Mostrar solo los libros que todavía no se contaron">Sin contar</button>
       <button class="sin" id="btnCero" type="button" aria-pressed="false" title="Mostrar solo los libros con stock en el sistema">Con stock</button>
-      <button class="sin" id="btnMapa" type="button" aria-label="Mapa del depósito" title="Mapa del depósito: qué módulos ya tienen libros ubicados (M)" style="display:inline-flex;align-items:center;padding:6px 12px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.5 3.5 6.5v13L9 17.5l6 2 5.5-2v-13L15 6.5z"/><path d="M9 4.5v13M15 6.5v13"/></svg></button>
-      <button class="sin" id="btnEstantes" type="button" aria-label="Estantes" title="Estantes: las ubicaciones y los libros de cada una (E)" style="display:inline-flex;align-items:center;padding:6px 12px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="1.5"/><path d="M4 9.2h16M4 14.8h16"/><path d="M7 9.2V6.4M9.5 9.2V5.6M12 9.2V6.8M7.5 14.8v-3.4M10 14.8v-2.8M15.5 14.8v-3.6M7 20.5v-3.2M11.5 20.5v-3.6"/></svg></button>
       <button class="sin" id="btnUbi" type="button" aria-pressed="false" aria-label="Ubicación fija" title="Ubicación donde estás contando: se les pone a todos los libros que cuentes">📍</button>
       <button class="sin" id="btnFoto" type="button" hidden aria-label="Foto de estante" title="Foto de estante: subir fotos de los lomos para ponerles ubicación"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M3 11.5h18"/><path d="M5.5 11.5V6M8.5 11.5V4M11.5 11.5V7M14.5 11.5V5.5"/><path d="M5.5 21v-5M9 21v-7M12.5 21v-4.5M16 21v-6M19 21v-4"/></svg></button>
       <button class="sin orden" id="btnOrden" type="button" aria-pressed="false" aria-label="Ordenar por autor y título" title="Ordenar por autor y título"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M4 12h6M4 17h3"/><path d="M17 5v14M14 16l3 3 3-3"/></svg></button>
@@ -477,54 +451,6 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
   </div>
 </div>
 
-<div id="ubPanel" class="panel" hidden>
-  <div class="panel-in">
-    <div id="ubTit" class="aviso"></div>
-    <label class="campoc">Ubicación<input id="ubIn" type="text" autocomplete="off" maxlength="40" placeholder="Ej.: A-9-2"></label>
-    <div id="ubNota" class="nota"></div>
-    <div class="acciones">
-      <button class="btn pri" id="ubUno" type="button">Solo este libro</button>
-      <button class="btn" id="ubTodos" type="button" hidden>Todo el estante</button>
-      <button class="btn" id="ubCerrar" type="button">Cancelar</button>
-    </div>
-    <div id="ubAyuda" class="nota"></div>
-  </div>
-</div>
-<div id="mpPanel" class="panel" hidden>
-  <div class="panel-in" style="max-width:640px">
-    <div class="aviso">Mapa del depósito</div>
-    <label class="campoc">Ir a un módulo<input id="mpIr" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ej.: D7, 2I10 o PC"></label>
-    <div id="mpDeps" class="wrap" style="flex-direction:row;flex-wrap:wrap;gap:6px"></div>
-    <div id="mpRes" class="nota"></div>
-    <div id="mpMapa" class="mapa"></div>
-    <div id="mpOtros" class="nota"></div>
-    <div id="mpAyuda" class="nota">Azul: módulo con libros ubicados (el número es la cantidad de libros). Tocá un módulo para ver sus niveles y libros · Enter en el cuadro abre el módulo · Esc cierra</div>
-    <button class="btn" id="mpCerrar" type="button">Cerrar</button>
-  </div>
-</div>
-<div id="uePanel" class="panel" hidden>
-  <div class="panel-in">
-    <div id="ueVistaL" class="wrap" style="gap:10px">
-      <div class="aviso">Estantes</div>
-      <label class="campoc">Buscar estante<input id="ueQ" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ej.: LUMEN o A-9"></label>
-      <div id="ueRes" class="nota"></div>
-      <div id="ueLista" class="lista" style="max-height:58vh;overflow-y:auto"></div>
-      <div class="nota">↑ ↓ elegir · Enter abre el estante y sus libros · Esc cierra</div>
-    </div>
-    <div id="ueVistaD" class="wrap" style="gap:10px" hidden>
-      <div id="ueNom" class="aviso"></div>
-      <div id="ueRen" class="wrap" style="gap:8px">
-        <label class="campoc">Renombrar el estante<input id="ueIn" type="text" autocomplete="off" maxlength="40" placeholder="Ej.: A-9-2"></label>
-        <div id="ueNota" class="nota"></div>
-        <button class="btn pri ancho" id="ueOk" type="button">Renombrar</button>
-      </div>
-      <div id="ueLibros" class="lista" style="max-height:50vh;overflow-y:auto"></div>
-      <div class="nota">Tocá un libro para abrir su ficha · Enter renombra · Esc vuelve a la lista</div>
-      <button class="btn" id="ueVolver" type="button">← Todos los estantes</button>
-    </div>
-    <button class="btn" id="ueCerrar" type="button">Cerrar</button>
-  </div>
-</div>
 <div id="tapaPanel" class="panel" hidden>
   <div class="panel-in">
     <div id="tapaTit" class="aviso"></div>
@@ -1059,13 +985,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function confirmar() {
     if (sel < 0) return;
     if (!puedeContar()) { sinPermiso(); return; }
-    var vuelve = VINO_CAM && S.cod[sel] === VINO_CAM;
     var m = registrar(sel, pend);
     try { if (navigator.vibrate) navigator.vibrate(35); } catch (e) {}
     toast(pend ? '✓ Dep 1: ' + m.antes + ' → ' + m.ahora : '✓ Contado: Dep 1 ' + m.antes);
     pend = 0; pintarFicha(); pintarResultados(); contar();
-    VINO_CAM = '';
-    if (vuelve) abrirScan();                  // leyó con la cámara, dio Ok: sigue con el próximo libro
   }
   function visibles() {
     var ocultos = {};
@@ -1546,13 +1469,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function guardarUbic() { return guardar('ubic', { ses: NUBE.ses, m: UBIC, p: UBICPEND }); }
   function subirUbic() {
     if (!nubeOn() || !NUBE.ses) return Promise.resolve();
-    var claves = Object.keys(UBICPEND).filter(function (key) { if (!UBIC[key]) { delete UBICPEND[key]; return false; } return true; });
-    var trozos = [];
-    for (var i = 0; i < claves.length; i += 400) trozos.push(claves.slice(i, i + 400));
-    return Promise.all(trozos.map(function (t) {
-      var cuerpo = {}; t.forEach(function (key) { cuerpo[key] = UBIC[key]; });
-      return fetch(nubeBase() + '/ubic/' + NUBE.ses + '.json', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
-        .then(function (r) { if (r.ok) t.forEach(function (key) { delete UBICPEND[key]; }); }).catch(function () {});
+    return Promise.all(Object.keys(UBICPEND).map(function (key) {
+      var o = UBIC[key]; if (!o) { delete UBICPEND[key]; return null; }
+      return fetch(nubeBase() + '/ubic/' + NUBE.ses + '/' + key + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) })
+        .then(function (r) { if (r.ok) { delete UBICPEND[key]; } }).catch(function () {});
     })).then(guardarUbic);
   }
   function bajarUbic() {
@@ -1566,323 +1486,20 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       if (cambio) { guardarUbic(); pintarFicha(); }
     }).catch(function () {});
   }
-  var UBSEL = -1, UBMISMAS = [];
-  function normUb(t) { return norm(String(t || '').replace(/\s+/g, ' ').trim()); }
-  function limpiarUb(v) { return String(v || '').replace(/\s+/g, ' ').trim().slice(0, 40); }
   function editarUbic() {
     if (sel < 0 || !S) return;
     if (!puedeContar()) { sinPermiso(); return; }
-    var actual = ubicDe(sel), n = normUb(actual);
-    UBSEL = sel; UBMISMAS = [];
-    if (n) for (var i = 0; i < S.pos.length; i++) { if (normUb(ubicDe(i)) === n) UBMISMAS.push(i); }
-    $('ubTit').textContent = 'Ubicación de “' + S.tit[sel] + '”';
-    $('ubIn').value = actual;
-    var otros = UBMISMAS.length - (UBMISMAS.indexOf(sel) >= 0 ? 1 : 0);
-    $('ubNota').textContent = actual ? (UBMISMAS.length + (UBMISMAS.length === 1 ? ' libro está' : ' libros están') + ' en «' + actual + '»' + (otros > 0 ? ' (este y ' + otros + ' más).' : '.')) : 'Este libro todavía no tiene ubicación. Dejarla vacía la borra.';
-    var adm = nivel() === 'admin' && UBMISMAS.length > 1;
-    $('ubTodos').hidden = !adm; $('ubTodos').textContent = 'Todo el estante (' + UBMISMAS.length + ')';
-    $('ubAyuda').textContent = adm ? 'Enter: solo este libro · Ctrl+Enter: renombra todo el estante, los ' + UBMISMAS.length + ' libros · Esc cancela' : 'Enter guarda · Esc cancela';
-    $('ubPanel').hidden = false; $('ubIn').focus(); $('ubIn').select();
+    var v = prompt('Ubicación de “' + S.tit[sel] + '”\n(vacío para borrarla)', ubicDe(sel));
+    if (v === null) return;
+    v = v.replace(/\s+/g, ' ').trim().slice(0, 40);
+    ponerUbic(sel, v); pintarFicha(); toast(v ? '📍 ' + v : 'Ubicación borrada');
   }
-  function cerrarUb() { if (!$('ubPanel').hidden) { $('ubPanel').hidden = true; UBSEL = -1; UBMISMAS = []; } }
-  function guardarUbUno() {
-    var k = UBSEL; if (k < 0) return;
-    var v = limpiarUb($('ubIn').value);
-    cerrarUb(); ponerUbic(k, v); if (k === sel) pintarFicha(); toast(v ? '📍 ' + v : 'Ubicación borrada');
-  }
-  function renombrarLista(lista, v, viejo) {                    // todos los libros de `lista` pasan a la ubicación v (se sube a la nube)
-    var ahora = Date.now(), q = CFG.nombre || '';
-    lista.forEach(function (k) {
-      var key = ubKey(S.cod[k]);
-      UBIC[key] = { u: v, t: ahora, q: q, tit: String(S.tit[k]).trim(), cod: S.cod[k] };
-      UBICPEND[key] = 1;
-    });
-    if (UBFIJA && normUb(UBFIJA) === normUb(viejo)) { UBFIJA = v; try { localStorage.setItem('ubFija', v); } catch (e) {} pintarBtnUbi(); }
-    if (FILTRO_UBI && normUb(FILTRO_UBI) === normUb(viejo)) { FILTRO_UBI = v.toLowerCase(); FILTRO_UBINOM = v; }
-    guardarUbic(); subirUbic(); pintarFicha(); pintarResultados();
-  }
-  function guardarUbTodos() {
-    var v = limpiarUb($('ubIn').value), lista = UBMISMAS.slice(), viejo = UBSEL >= 0 ? ubicDe(UBSEL) : '';
-    if (!v) { toast('Escribí el nombre nuevo del estante'); return; }
-    if (nivel() !== 'admin') { toast('Solo el administrador renombra un estante entero'); return; }
-    cerrarUb();
-    renombrarLista(lista, v, viejo);
-    toast('📍 ' + lista.length + ' libros ahora en ' + v);
-  }
-  $('ubUno').addEventListener('click', guardarUbUno);
-  $('ubTodos').addEventListener('click', guardarUbTodos);
-  $('ubCerrar').addEventListener('click', cerrarUb);
-  $('ubIn').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { e.preventDefault(); if ((e.ctrlKey || e.metaKey) && !$('ubTodos').hidden) guardarUbTodos(); else guardarUbUno(); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarUb(); }
-  });
   function ponerUbic(k, v) {
     var key = ubKey(S.cod[k]);
     UBIC[key] = { u: v, t: Date.now(), q: CFG.nombre || '', tit: String(S.tit[k]).trim(), cod: S.cod[k] };
     UBICPEND[key] = 1; guardarUbic(); subirUbic();
   }
   $('fUbic').addEventListener('click', editarUbic);
-
-  /* ---------- estantes: el listado de ubicaciones, los libros de cada una y renombrarla (admin) ---------- */
-  function enfocarSiTeclado(el, sel) {                      // en el teléfono no se enfoca: saltaba el teclado y tapaba la pantalla
-    try { if (window.matchMedia && matchMedia('(pointer: coarse)').matches) return; } catch (e) {}
-    el.focus(); if (sel) el.select();
-  }
-  var UE = { todas: [], vis: [], i: 0, cur: null, modulo: '', desdeMapa: false };
-  function moduloDe(u) {                                  // «1B-10-3» → «1B-10» (depósito 1, fila B, módulo 10) · «B-10-3» (sin depósito) → «1B-10» · «pc» → «PC» · lo que no sigue el esquema → ''
-    var n = normUb(u), m = /^(?:(\d)\s*)?([a-z])\s*-\s*(\d{1,2})(?=$|[\s-])/.exec(n);
-    if (m) return (m[1] || '1') + m[2].toUpperCase() + '-' + parseInt(m[3], 10);
-    m = /^(\d)?\s*pc(?=$|[\s-])/.exec(n);
-    return m ? (!m[1] || m[1] === '1' ? 'PC' : m[1] + 'PC') : '';
-  }
-  function depDe(mod) { return mod === 'PC' ? '1' : /^\d/.test(mod) ? mod.charAt(0) : ''; }
-  function ueEstantes() {
-    var m = {};
-    for (var i = 0; i < S.pos.length; i++) {
-      var u = ubicDe(i); if (!u) continue;
-      var n = normUb(u), o = m[n] || (m[n] = { n: n, nombres: {}, idx: [] });
-      o.nombres[u] = (o.nombres[u] || 0) + 1; o.idx.push(i);
-    }
-    return Object.keys(m).map(function (n) {
-      var o = m[n], mejor = '', c = 0;
-      Object.keys(o.nombres).forEach(function (x) { if (o.nombres[x] > c) { c = o.nombres[x]; mejor = x; } });
-      o.nom = mejor; return o;
-    }).sort(function (a, b) { return a.nom.localeCompare(b.nom, 'es', { numeric: true, sensitivity: 'base' }); });
-  }
-  function ueFila(titulo, sub, der, alClic) {
-    var r = document.createElement('div'); r.className = 'mov'; r.tabIndex = 0; r.style.cursor = 'pointer';
-    var t = document.createElement('div'); t.className = 'txt';
-    var a = document.createElement('div'); a.className = 't'; a.textContent = titulo;
-    t.appendChild(a);
-    if (sub) { var x = document.createElement('div'); x.className = 'm'; x.textContent = sub; t.appendChild(x); }
-    r.appendChild(t);
-    if (der != null) { var d = document.createElement('div'); d.className = 'dl'; d.textContent = der; r.appendChild(d); }
-    r.addEventListener('click', alClic);
-    r.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); alClic(); } });
-    return r;
-  }
-  function ueDibujarLista() {
-    var q = normUb($('ueQ').value), lista = $('ueLista'); lista.innerHTML = '';
-    UE.vis = UE.todas.filter(function (o) {
-      var mo = moduloDe(o.nom);
-      if (UE.modulo === '-' ? (mo && (!MP_PLANO[depDe(mo)] || MP_IDS[mo])) : UE.modulo && mo !== UE.modulo) return false;
-      return !q || o.n.indexOf(q) >= 0;
-    });
-    if (UE.i >= UE.vis.length) UE.i = Math.max(0, UE.vis.length - 1);
-    var libros = UE.vis.reduce(function (a, o) { return a + o.idx.length; }, 0);
-    $('ueRes').textContent = UE.todas.length ? (UE.modulo === '-' ? 'Fuera del plano · ' : UE.modulo ? 'Módulo ' + UE.modulo + ' · ' : '') + UE.vis.length + (UE.vis.length === 1 ? ' estante' : ' estantes') + ' · ' + libros + ' libros' : 'Todavía no hay libros con ubicación.';
-    UE.vis.slice(0, 400).forEach(function (o, i) {
-      var r = ueFila(o.nom, Object.keys(o.nombres).length > 1 ? Object.keys(o.nombres).length + ' escrituras distintas' : '', o.idx.length, function () { UE.i = i; ueDetalle(o); });
-      if (i === UE.i) r.style.background = 'var(--accent-soft)';
-      lista.appendChild(r);
-    });
-    if (UE.vis.length > 400) { var n = document.createElement('div'); n.className = 'nota'; n.textContent = 'Se muestran los primeros 400: escribí para acotar.'; lista.appendChild(n); }
-  }
-  function ueMarcar(d) {
-    if (!UE.vis.length) return;
-    UE.i = Math.max(0, Math.min(Math.min(UE.vis.length, 400) - 1, UE.i + d));
-    var hijos = $('ueLista').children;
-    for (var j = 0; j < hijos.length; j++) hijos[j].style.background = j === UE.i ? 'var(--accent-soft)' : '';
-    if (hijos[UE.i] && hijos[UE.i].scrollIntoView) hijos[UE.i].scrollIntoView({ block: 'nearest' });
-  }
-  function ueAbrir(modulo, desdeMapa) {
-    if (!S) { toast('Todavía no hay datos cargados'); return; }
-    UE.modulo = typeof modulo === 'string' ? modulo : ''; UE.desdeMapa = !!desdeMapa;
-    UE.todas = ueEstantes(); UE.i = 0; UE.cur = null;
-    $('ueQ').value = ''; $('ueVistaL').hidden = false; $('ueVistaD').hidden = true;
-    ueDibujarLista(); $('uePanel').hidden = false; enfocarSiTeclado($('ueQ'));
-  }
-  function ueDetalle(o) {
-    UE.cur = o;
-    $('ueNom').textContent = o.nom + ' · ' + o.idx.length + (o.idx.length === 1 ? ' libro' : ' libros');
-    var adm = nivel() === 'admin';
-    $('ueRen').hidden = !adm; $('ueIn').value = o.nom; ueNotaRen();
-    var lista = $('ueLibros'); lista.innerHTML = '';
-    var orden = o.idx.slice().sort(function (a, b) { return String(S.tit[a]).localeCompare(String(S.tit[b]), 'es', { sensitivity: 'base' }); });
-    orden.slice(0, 500).forEach(function (k) {
-      lista.appendChild(ueFila(S.tit[k], [S.aut[k], S.cod[k]].filter(Boolean).join(' · '), S.d1[k], function () { ueIrALibro(k); }));
-    });
-    if (orden.length > 500) { var n = document.createElement('div'); n.className = 'nota'; n.textContent = 'Se muestran los primeros 500 libros.'; lista.appendChild(n); }
-    $('ueVistaL').hidden = true; $('ueVistaD').hidden = false;
-    if (adm) enfocarSiTeclado($('ueIn'), true);
-  }
-  function ueNotaRen() {
-    var v = limpiarUb($('ueIn').value), o = UE.cur; if (!o) return;
-    var otro = v && normUb(v) !== o.n && UE.todas.filter(function (x) { return x.n === normUb(v); })[0];
-    $('ueNota').textContent = !v ? 'Escribí el nombre nuevo.' : otro ? 'Ya existe «' + otro.nom + '» con ' + otro.idx.length + ' libros: se juntan con estos.' : (o.idx.length === 1 ? 'El libro pasa' : 'Los ' + o.idx.length + ' libros pasan') + ' a «' + v + '». Los otros teléfonos lo reciben solos.';
-    $('ueOk').textContent = o.idx.length === 1 ? 'Renombrar' : 'Renombrar los ' + o.idx.length + ' libros';
-  }
-  function ueRenombrar() {
-    var o = UE.cur, v = limpiarUb($('ueIn').value);
-    if (!o) return;
-    if (nivel() !== 'admin') { toast('Solo el administrador renombra un estante entero'); return; }
-    if (!v) { toast('Escribí el nombre nuevo del estante'); return; }
-    if (v === o.nom && Object.keys(o.nombres).length < 2) { toast('Ese ya es el nombre'); return; }
-    renombrarLista(o.idx.slice(), v, o.nom);
-    toast('📍 ' + o.idx.length + ' libros ahora en ' + v);
-    var nuevoN = normUb(v);
-    UE.todas = ueEstantes(); UE.cur = null;
-    $('ueQ').value = ''; $('ueVistaD').hidden = true; $('ueVistaL').hidden = false;
-    UE.i = 0; ueDibujarLista(); var pos = UE.vis.filter(function (x) { return x.n === nuevoN; })[0]; UE.i = Math.max(0, UE.vis.indexOf(pos)); ueDibujarLista(); enfocarSiTeclado($('ueQ'));
-  }
-  function ueIrALibro(k) { UE.desdeMapa = false; cerrarUe(); $('q').value = S.cod[k]; nuevaBusqueda(); }
-  function cerrarUe() { $('uePanel').hidden = true; UE.cur = null; }
-  function ueAtras() {                       // un paso atrás: del estante a la lista, y de la lista a cerrar. true si hizo algo
-    if ($('uePanel').hidden) return false;
-    if (!$('ueVistaD').hidden) { $('ueVistaD').hidden = true; $('ueVistaL').hidden = false; UE.cur = null; enfocarSiTeclado($('ueQ')); return true; }
-    cerrarUe(); if (UE.desdeMapa) { UE.desdeMapa = false; mpAbrir(); } return true;
-  }
-  $('btnEstantes').addEventListener('click', function () { ueAbrir(); });
-  $('ueCerrar').addEventListener('click', cerrarUe);
-  $('ueVolver').addEventListener('click', ueAtras);
-  $('ueOk').addEventListener('click', ueRenombrar);
-  $('ueQ').addEventListener('input', function () { UE.i = 0; ueDibujarLista(); });
-  $('ueIn').addEventListener('input', ueNotaRen);
-  $('ueQ').addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowDown') { e.preventDefault(); ueMarcar(1); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); ueMarcar(-1); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (UE.vis[UE.i]) ueDetalle(UE.vis[UE.i]); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ueAtras(); }
-  });
-  $('ueIn').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { e.preventDefault(); ueRenombrar(); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ueAtras(); }
-  });
-  /* ---------- mapa del depósito ---------- */
-  var MP = { dep: '' };                                                                      // depósito que se está viendo
-  var MP_FILAS = { 10: 1, 9: 2, 8: 3, 7: 5, 6: 6, 5: 7, 4: 8, 3: 10, 2: 11, 1: 12 };       // número de módulo -> fila de la grilla
-  var MP_COLS = { A: 1, B: 3, C: 4, D: 6, E: 7, F: 9, G: 10 };                              // letra de fila de estantes -> columna
-  var MP_MODS = (function () {                                                               // el plano del depósito 1 (los módulos se llaman 1A-9, 1B-10…)
-    var l = [];
-    Object.keys(MP_COLS).forEach(function (L) {
-      for (var n = 1; n <= 10; n++) {
-        if (L === 'A' && n === 10) continue;
-        var f = MP_FILAS[n]; if (L === 'A' && n >= 4) f = MP_FILAS[n + 1];                 // la fila A está corrida: A-9 queda a la altura de B-10
-        l.push({ id: '1' + L + '-' + n, col: MP_COLS[L], fila: f, v: true });
-      }
-    });
-    l.push({ id: 'PC', col: 1, fila: 8, v: true });
-    [['L', 1], ['K', 2], ['J', 3], ['I', 4], ['H', 5]].forEach(function (x) {
-      l.push({ id: '1' + x[0] + '-1', col: 1, fila: x[1], lado: true }, { id: '1' + x[0] + '-2', col: 2, fila: x[1], lado: true });
-    });
-    return l;
-  })();
-  var MP_MODS2 = (function () {                                                              // plano del depósito 2: a la izquierda H…A con -2 arriba y -1 abajo; a la derecha I-9…I-1 y I-10
-    var l = [], L = 'HGFEDCBA';
-    for (var k = 0; k < 8; k++) { var r = 1 + 12 * k; l.push({ id: '2' + L[k] + '-2', col: 1, fila: r, alto: 3 }, { id: '2' + L[k] + '-1', col: 1, fila: r + 3, alto: 3 }); }
-    for (var n = 9; n >= 1; n--) l.push({ id: '2I-' + n, col: 4, fila: 1 + 8 * (9 - n), alto: 8 });
-    l.push({ id: '2I-10', col: 3, fila: 1, alto: 4 });
-    return l;
-  })();
-  var MP_IDS = {}, MP_PLANO = { '1': 1, '2': 1 };                                            // MP_PLANO: depósitos que ya tienen plano dibujado
-  MP_MODS.concat(MP_MODS2).forEach(function (x) { MP_IDS[x.id] = 1; });
-  function mpContar() {
-    var por = {}, deps = {}, otros = { libros: 0, nombres: {} };
-    for (var i = 0; i < S.pos.length; i++) {
-      var u = ubicDe(i); if (!u) continue;
-      var m = moduloDe(u), d = m ? depDe(m) : '';
-      if (m) deps[d] = (deps[d] || 0) + 1;
-      if (m && (!MP_PLANO[d] || MP_IDS[m])) { var o = por[m] || (por[m] = { libros: 0, niveles: {} }); o.libros++; o.niveles[normUb(u)] = 1; }
-      else { otros.libros++; otros.nombres[normUb(u)] = 1; }
-    }
-    return { por: por, deps: deps, otros: otros };
-  }
-  function mpBoton(id, d, clase) {
-    var b = document.createElement('button'); b.type = 'button';
-    b.className = 'mod' + clase + (d ? ' on' : '');
-    b.setAttribute('aria-label', id + (d ? ': ' + d.libros + ' libros en ' + Object.keys(d.niveles).length + ' niveles' : ': sin libros ubicados'));
-    b.innerHTML = '<span class="in"><b></b><small></small></span>';
-    b.querySelector('b').textContent = id; b.querySelector('small').textContent = d ? d.libros : '';
-    b.addEventListener('click', function () { mpAbrirModulo(id); });
-    return b;
-  }
-  function mpAbrir() {
-    if (!S) { toast('Todavía no hay datos cargados'); return; }
-    var c = mpContar();
-    var depsLista = Object.keys(MP_PLANO).concat(Object.keys(c.deps)).filter(function (d, i, a) { return a.indexOf(d) === i; }).sort();   // los que tienen plano + los que ya tienen libros
-    if (!MP.dep) MP.dep = depsLista.slice().sort(function (a, b) { return (c.deps[b] || 0) - (c.deps[a] || 0); })[0] || '1';
-    var chips = $('mpDeps'); chips.innerHTML = '';
-    depsLista.forEach(function (d) {
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'sin'; b.setAttribute('aria-pressed', d === MP.dep ? 'true' : 'false');
-      b.textContent = d + (c.deps[d] ? ' · ' + c.deps[d] : ''); b.setAttribute('aria-label', 'Depósito ' + d + (c.deps[d] ? ', ' + c.deps[d] + ' libros' : ''));
-      b.addEventListener('click', function () { MP.dep = d; mpAbrir(); });
-      chips.appendChild(b);
-    });
-    var mapa = $('mpMapa'); mapa.innerHTML = ''; mapa.className = 'mapa';
-    var con = 0, total = 0, adm = nivel() === 'admin';
-    if (MP.dep === '1') {
-      var lado = document.createElement('div');
-      lado.style.cssText = 'grid-column:12 / 14;grid-row:5 / 9;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);margin:0 0 0 6px';
-      mapa.appendChild(lado);
-      MP_MODS.forEach(function (x) {
-        var b = mpBoton(x.id, c.por[x.id], x.v ? ' v' : '');
-        b.style.gridColumn = x.col; b.style.gridRow = x.fila;
-        if (x.lado) b.style.margin = (x.fila === 2 || x.fila === 4 ? '10px' : '0') + ' 0 0 0';
-        if (c.por[x.id]) con++;
-        (x.lado ? lado : mapa).appendChild(b);
-      });
-      [['ESCALERA', '1 / 4', '11 / 14'], ['DESPACHO', '9 / 13', '11 / 14']].forEach(function (z) {
-        var e = document.createElement('div'); e.className = 'bloque'; e.textContent = z[0]; e.style.gridRow = z[1]; e.style.gridColumn = z[2]; mapa.appendChild(e);
-      });
-      total = MP_MODS.length;
-      $('mpRes').textContent = con + ' de ' + total + ' módulos con libros ubicados';
-    } else if (MP.dep === '2') {
-      mapa.className = 'mapa z2'; var vistos = {};
-      MP_MODS2.forEach(function (x) {
-        var b = mpBoton(x.id, c.por[x.id], '');
-        b.style.gridColumn = x.col; b.style.gridRow = x.fila + ' / span ' + x.alto;
-        mapa.appendChild(b); if (c.por[x.id] && !vistos[x.id]) { vistos[x.id] = 1; con++; }
-      });
-      var mu = document.createElement('div'); mu.className = 'bloque'; mu.textContent = 'MUEBLE'; mu.style.cssText = 'grid-column:4;grid-row:73 / span 12;writing-mode:vertical-rl;letter-spacing:3px;font-size:11px';
-      mapa.appendChild(mu);
-      var u2 = {}; MP_MODS2.forEach(function (x) { u2[x.id] = 1; });
-      $('mpRes').textContent = con + ' de ' + Object.keys(u2).length + ' módulos con libros ubicados';
-    } else {                                                          // sin plano todavía: se arma con lo que ubicaron, fila por fila
-      mapa.className = 'mapa auto';
-      var filas = {};
-      Object.keys(c.por).filter(function (id) { return depDe(id) === MP.dep; }).forEach(function (id) {
-        var m = /^\d([A-Z]+)-(\d+)$/.exec(id), clave = m ? m[1] : id;
-        (filas[clave] = filas[clave] || []).push({ id: id, n: m ? +m[2] : 0 });
-        con++;
-      });
-      Object.keys(filas).sort().forEach(function (L) {
-        var f = document.createElement('div'); f.className = 'fila';
-        var t = document.createElement('span'); t.className = 'nota'; t.textContent = 'Fila ' + L; f.appendChild(t);
-        filas[L].sort(function (a, b) { return a.n - b.n; }).forEach(function (x) { f.appendChild(mpBoton(x.id, c.por[x.id], '')); });
-        mapa.appendChild(f);
-      });
-      if (!con) { var v0 = document.createElement('div'); v0.className = 'nota'; v0.textContent = 'Todavía no hay libros ubicados en el depósito ' + MP.dep + '.'; mapa.appendChild(v0); }
-      $('mpRes').textContent = con + (con === 1 ? ' módulo' : ' módulos') + ' con libros ubicados' + (adm ? ' · todavía no hay plano del depósito ' + MP.dep : '');
-    }
-    var n = Object.keys(c.otros.nombres).length;
-    var o = $('mpOtros'); o.innerHTML = ''; o.hidden = !(n && adm); $('mpAyuda').hidden = !adm;
-    if (n && adm) {
-      o.appendChild(document.createTextNode(c.otros.libros + ' libros están en ' + n + (n === 1 ? ' ubicación' : ' ubicaciones') + ' que no siguen el esquema (nombres provisorios u otros). '));
-      var v = document.createElement('button'); v.type = 'button'; v.className = 'btn chico'; v.textContent = 'Verlas';
-      v.addEventListener('click', function () { cerrarMp(); ueAbrir('-', true); });
-      o.appendChild(v);
-    }
-    $('mpIr').value = ''; $('mpPanel').hidden = false; enfocarSiTeclado($('mpIr'));
-  }
-  function mpAbrirModulo(id) {
-    if (!(mpContar().por[id])) { toast(id + ': todavía sin libros ubicados'); return; }
-    cerrarMp(); ueAbrir(id, true);
-  }
-  function cerrarMp() { $('mpPanel').hidden = true; }
-  function mpAtras() { if ($('mpPanel').hidden) return false; cerrarMp(); return true; }
-  $('btnMapa').addEventListener('click', mpAbrir);
-  $('mpCerrar').addEventListener('click', cerrarMp);
-  $('mpIr').addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarMp(); }
-    else if (e.key === 'Enter') {
-      e.preventDefault();
-      var t = $('mpIr').value.replace(/\s+/g, '').toUpperCase(), m = /^(\d)?([A-Z])-?(\d{1,2})$/.exec(t), p = /^(\d)?PC$/.exec(t);
-      var id = p ? (!p[1] || p[1] === '1' ? 'PC' : p[1] + 'PC') : m ? (m[1] || MP.dep || '1') + m[2] + '-' + parseInt(m[3], 10) : '';
-      if (id) mpAbrirModulo(id); else toast('No encuentro ese módulo: probá con D7, 1B10 o PC');
-    }
-  });
-  $('mpPanel').addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarMp(); } });
-  $('ueVistaD').addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ueAtras(); } });
 
   /* ---------- quién está conectado ---------- */
   var PRES = {};
@@ -2246,12 +1863,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       ck.setAttribute('aria-checked', ok); ck.setAttribute('aria-label', 'Separado'); ck.textContent = ok ? '✓' : '';
       ck.addEventListener('click', function () { marcarHecho(p, it[0], !(p.hechos && p.hechos[it[0]])); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); });
       var t = document.createElement('div'); t.className = 'txt';
-      var a = document.createElement('div'); a.className = 't';
-      var ubp = k != null ? ubicDe(k) : '';
-      if (ubp) { var bu = document.createElement('span'); bu.className = 'ubp'; bu.textContent = '📍 ' + ubp; a.appendChild(bu); }     // dónde está, al lado del título
-      a.appendChild(document.createTextNode(k != null ? S.tit[k] : it[0]));
+      var a = document.createElement('div'); a.className = 't'; a.textContent = k != null ? S.tit[k] : it[0];
       var m = document.createElement('div'); m.className = 'm';
-      m.textContent = 'Pedido: ' + it[1] + (k != null ? ' · ' + S.cod[k] : '') + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock') + (ok && p.hn && p.hn[it[0]] && normNombre(p.hn[it[0]]) !== normNombre(CFG.nombre) ? ' · separó ' + p.hn[it[0]] : '');
+      m.textContent = 'Pedido: ' + it[1] + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock') + (ok && p.hn && p.hn[it[0]] && normNombre(p.hn[it[0]]) !== normNombre(CFG.nombre) ? ' · separó ' + p.hn[it[0]] : '');
       t.appendChild(a); t.appendChild(m);
       f.appendChild(ck); f.appendChild(t);
       if (k != null) { var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]); f.appendChild(d); }
@@ -2481,11 +2095,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; }
     $('scan').hidden = true; $('scanLuz').hidden = true; $('scanLuz').setAttribute('aria-pressed', 'false');
   }
-  var VINO_CAM = '';                           // el libro de la ficha salió de la cámara: al dar Ok se vuelve a la cámara
   function procesarCodigo(cod) {
     if (!S) return;
     var k = libroPorCod(cod);
-    if (MODO === 'cons') { VINO_CAM = k == null ? '' : S.cod[k]; cerrarScan(); $('q').value = cod; nuevaBusqueda(); return; }
+    if (MODO === 'cons') { cerrarScan(); $('q').value = cod; nuevaBusqueda(); return; }
     if (k == null) { pitar(false); textoScan('No está en el stock: ' + cod, true); return; }
     var c = S.cod[k];
     if (!CONTEO[c]) { CONTEO[c] = { cod: c, tit: S.tit[k], n: 0 }; ORDEN.push(c); }
@@ -2820,7 +2433,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function enfocarBuscar() { setTimeout(function () { var q = $('q'); q.focus(); q.select(); }, 0); }   // después del evento: así la tecla no se escribe en el cuadro
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.altKey || e.metaKey) return;
-    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || $('vistaBuscar').hidden) return;
+    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || $('vistaBuscar').hidden) return;
     var t = e.target && e.target.tagName, enQ = e.target && e.target.id === 'q', k = e.key;
     if (e.ctrlKey && (k === 'k' || k === 'K')) { enfocarBuscar(); e.preventDefault(); return; }
     if (e.ctrlKey) return;
@@ -2837,9 +2450,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       return;
     }
     if (k === '/') { enfocarBuscar(); e.preventDefault(); return; }
-    if ((k === 'e' || k === 'E') && t !== 'BUTTON') { ueAbrir(); e.preventDefault(); return; }
-    if ((k === 'm' || k === 'M') && t !== 'BUTTON') { mpAbrir(); e.preventDefault(); return; }
-    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · E estantes · M mapa · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc borra búsqueda y filtros'); e.preventDefault(); return; }
+    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc borra búsqueda y filtros'); e.preventDefault(); return; }
     if (k === 'Escape') { limpiarTodo(); enfocarBuscar(); e.preventDefault(); return; }       // Esc: borra la búsqueda y los filtros, y queda listo para escribir
     if ((k === 'h' || k === 'H') && sel >= 0) { abrirHist(); e.preventDefault(); return; }
     if (k === 's' || k === 'S') { $('btnCero').click(); e.preventDefault(); return; }   // S: con Stock
@@ -2859,7 +2470,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   document.addEventListener('keydown', function (e) {       // Enter o espacio con la tapa grande abierta la cierran
     if ((e.key === 'Enter' || e.key === ' ') && !e.defaultPrevented && !$('tapaPanel').hidden && !(e.target && e.target.tagName === 'BUTTON')) { e.preventDefault(); cerrarTapa(); }
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); cerrarAdmin(); cerrarHist(); cerrarUb(); mpAtras(); ueAtras(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarEdi(); cerrarRev(); cerrarTapa(); cerrarFoto(); cerrarAdmin(); cerrarHist(); } });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && NUBE.listo) { bajar(); subirPendientes(); } });
   window.addEventListener('online', function () { if (nubeOn()) { if (NUBE.listo) { bajar(); subirPendientes(); } else conectar(); } });
 
@@ -3009,9 +2620,6 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!$('admPanel').hidden) { cerrarAdmin(); return true; }
     if (!$('histPanel').hidden) { cerrarHist(); return true; }
     if (!$('fotoPanel').hidden) { cerrarFoto(); return true; }
-    if (!$('ubPanel').hidden) { cerrarUb(); return true; }
-    if (!$('mpPanel').hidden) { cerrarMp(); return true; }
-    if (!$('uePanel').hidden) { ueAtras(); return true; }
     if (!$('tapaPanel').hidden) { cerrarTapa(); return true; }
     if (!$('revPanel').hidden) { cerrarRev(); return true; }
     if (!$('scan').hidden) { cerrarScan(); return true; }
@@ -3025,7 +2633,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   /* flechita arriba a la izquierda y deslizar hacia la derecha: en iPhone (app instalada) no hay botón ni gesto de volver */
   function hayAtras() {
-    return !$('admPanel').hidden || !$('histPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('revPanel').hidden ||
+    return !$('admPanel').hidden || !$('histPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('revPanel').hidden ||
       !$('scan').hidden || !$('ediPanel').hidden || (!$('vistaPedidos').hidden && !!PEDABIERTO) || $('vistaBuscar').hidden ||
       sel >= 0 || !!$('q').value || hayFiltro();
   }
@@ -3046,14 +2654,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }, { passive: true });
   })();
   try {
-    /* El escalón de historial hay que crearlo con un toque o una tecla del usuario: si no, Chrome lo salta al apretar "atrás" y se sale de la app.
-       Por eso se arma en el primer gesto y se vuelve a armar en el siguiente si "atrás" lo consumió. */
     history.replaceState({ stock: 0 }, '');
-    var armarEscalon = function () { try { if (!history.state || history.state.stock !== 1) history.pushState({ stock: 1 }, ''); } catch (e) {} };
-    ['pointerdown', 'touchstart', 'keydown', 'click'].forEach(function (ev) { document.addEventListener(ev, armarEscalon, true); });
-    armarEscalon();
+    history.pushState({ stock: 1 }, '');
     window.addEventListener('popstate', function () {
-      if (atras()) { armarEscalon(); }                                       // volvió a la base: se vuelve a armar el escalón (y si no se pudo, en el próximo toque)
+      if (atras()) { history.pushState({ stock: 1 }, ''); }          // volvió a la base: se vuelve a armar el escalón
       else { history.back(); }                                        // no queda nada abierto: ahora sí sale
     });
   } catch (e) {}
