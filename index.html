@@ -1051,10 +1051,13 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function confirmar() {
     if (sel < 0) return;
     if (!puedeContar()) { sinPermiso(); return; }
+    var vuelve = VINO_CAM && S.cod[sel] === VINO_CAM;
     var m = registrar(sel, pend);
     try { if (navigator.vibrate) navigator.vibrate(35); } catch (e) {}
     toast(pend ? '✓ Dep 1: ' + m.antes + ' → ' + m.ahora : '✓ Contado: Dep 1 ' + m.antes);
     pend = 0; pintarFicha(); pintarResultados(); contar();
+    VINO_CAM = '';
+    if (vuelve) abrirScan();                  // leyó con la cámara, dio Ok: sigue con el próximo libro
   }
   function visibles() {
     var ocultos = {};
@@ -2410,10 +2413,11 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; }
     $('scan').hidden = true; $('scanLuz').hidden = true; $('scanLuz').setAttribute('aria-pressed', 'false');
   }
+  var VINO_CAM = '';                           // el libro de la ficha salió de la cámara: al dar Ok se vuelve a la cámara
   function procesarCodigo(cod) {
     if (!S) return;
     var k = libroPorCod(cod);
-    if (MODO === 'cons') { cerrarScan(); $('q').value = cod; nuevaBusqueda(); return; }
+    if (MODO === 'cons') { VINO_CAM = k == null ? '' : S.cod[k]; cerrarScan(); $('q').value = cod; nuevaBusqueda(); return; }
     if (k == null) { pitar(false); textoScan('No está en el stock: ' + cod, true); return; }
     var c = S.cod[k];
     if (!CONTEO[c]) { CONTEO[c] = { cod: c, tit: S.tit[k], n: 0 }; ORDEN.push(c); }
