@@ -284,6 +284,9 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 .mapa .bloque { display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--ink); color: var(--muted); font-weight: 800; letter-spacing: 2px; font-size: 13px;
   background: repeating-linear-gradient(45deg, transparent 0 5px, var(--line) 5px 6px); }
 .mapa .sep { margin-top: 10px; }
+.mapa.z2 { grid-template-columns: 78fr 42fr 77fr 45fr; grid-template-rows: repeat(90, 8px); max-width: 300px; margin: 0 auto; }
+.mapa.z2 .mod .in { flex-direction: row; gap: 5px; }
+.mapa.z2 .mod[style*="span 8"] .in b, .mapa.z2 .mod[style*="span 4"] .in b { font-size: 11px; }
 .mapa.auto { display: flex; flex-direction: column; gap: 10px; background-image: none; }
 .mapa.auto .fila { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .mapa.auto .fila .nota { width: 56px; padding: 0; }
@@ -490,7 +493,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 <div id="mpPanel" class="panel" hidden>
   <div class="panel-in" style="max-width:640px">
     <div class="aviso">Mapa del depósito</div>
-    <label class="campoc">Ir a un módulo<input id="mpIr" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ej.: D7, 2B10 o PC"></label>
+    <label class="campoc">Ir a un módulo<input id="mpIr" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ej.: D7, 2I10 o PC"></label>
     <div id="mpDeps" class="wrap" style="flex-direction:row;flex-wrap:wrap;gap:6px"></div>
     <div id="mpRes" class="nota"></div>
     <div id="mpMapa" class="mapa"></div>
@@ -1662,7 +1665,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var q = normUb($('ueQ').value), lista = $('ueLista'); lista.innerHTML = '';
     UE.vis = UE.todas.filter(function (o) {
       var mo = moduloDe(o.nom);
-      if (UE.modulo === '-' ? (mo && (depDe(mo) !== '1' || MP_IDS[mo])) : UE.modulo && mo !== UE.modulo) return false;
+      if (UE.modulo === '-' ? (mo && (!MP_PLANO[depDe(mo)] || MP_IDS[mo])) : UE.modulo && mo !== UE.modulo) return false;
       return !q || o.n.indexOf(q) >= 0;
     });
     if (UE.i >= UE.vis.length) UE.i = Math.max(0, UE.vis.length - 1);
@@ -1764,14 +1767,22 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     });
     return l;
   })();
-  var MP_IDS = {}; MP_MODS.forEach(function (x) { MP_IDS[x.id] = 1; });
+  var MP_MODS2 = (function () {                                                              // plano del depósito 2: a la izquierda H…A con -2 arriba y -1 abajo; a la derecha I-9…I-1 y I-10
+    var l = [], L = 'HGFEDCBA';
+    for (var k = 0; k < 8; k++) { var r = 1 + 12 * k; l.push({ id: '2' + L[k] + '-2', col: 1, fila: r, alto: 3 }, { id: '2' + L[k] + '-1', col: 1, fila: r + 3, alto: 3 }); }
+    for (var n = 9; n >= 1; n--) l.push({ id: '2I-' + n, col: 4, fila: 1 + 8 * (9 - n), alto: 8 });
+    l.push({ id: '2I-10', col: 3, fila: 1, alto: 4 });
+    return l;
+  })();
+  var MP_IDS = {}, MP_PLANO = { '1': 1, '2': 1 };                                            // MP_PLANO: depósitos que ya tienen plano dibujado
+  MP_MODS.concat(MP_MODS2).forEach(function (x) { MP_IDS[x.id] = 1; });
   function mpContar() {
     var por = {}, deps = {}, otros = { libros: 0, nombres: {} };
     for (var i = 0; i < S.pos.length; i++) {
       var u = ubicDe(i); if (!u) continue;
       var m = moduloDe(u), d = m ? depDe(m) : '';
       if (m) deps[d] = (deps[d] || 0) + 1;
-      if (m && (d !== '1' || MP_IDS[m])) { var o = por[m] || (por[m] = { libros: 0, niveles: {} }); o.libros++; o.niveles[normUb(u)] = 1; }
+      if (m && (!MP_PLANO[d] || MP_IDS[m])) { var o = por[m] || (por[m] = { libros: 0, niveles: {} }); o.libros++; o.niveles[normUb(u)] = 1; }
       else { otros.libros++; otros.nombres[normUb(u)] = 1; }
     }
     return { por: por, deps: deps, otros: otros };
@@ -1788,12 +1799,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function mpAbrir() {
     if (!S) { toast('Todavía no hay datos cargados'); return; }
     var c = mpContar();
-    var depsLista = ['1', '2', '3'].concat(Object.keys(c.deps).filter(function (d) { return d > '3'; })).sort();
+    var depsLista = Object.keys(MP_PLANO).concat(Object.keys(c.deps)).filter(function (d, i, a) { return a.indexOf(d) === i; }).sort();   // los que tienen plano + los que ya tienen libros
     if (!MP.dep) MP.dep = depsLista.slice().sort(function (a, b) { return (c.deps[b] || 0) - (c.deps[a] || 0); })[0] || '1';
     var chips = $('mpDeps'); chips.innerHTML = '';
     depsLista.forEach(function (d) {
       var b = document.createElement('button'); b.type = 'button'; b.className = 'sin'; b.setAttribute('aria-pressed', d === MP.dep ? 'true' : 'false');
-      b.textContent = 'Depósito ' + d + (c.deps[d] ? ' · ' + c.deps[d] : '');
+      b.textContent = d + (c.deps[d] ? ' · ' + c.deps[d] : ''); b.setAttribute('aria-label', 'Depósito ' + d + (c.deps[d] ? ', ' + c.deps[d] + ' libros' : ''));
       b.addEventListener('click', function () { MP.dep = d; mpAbrir(); });
       chips.appendChild(b);
     });
@@ -1815,6 +1826,17 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       });
       total = MP_MODS.length;
       $('mpRes').textContent = con + ' de ' + total + ' módulos con libros ubicados';
+    } else if (MP.dep === '2') {
+      mapa.className = 'mapa z2'; var vistos = {};
+      MP_MODS2.forEach(function (x) {
+        var b = mpBoton(x.id, c.por[x.id], '');
+        b.style.gridColumn = x.col; b.style.gridRow = x.fila + ' / span ' + x.alto;
+        mapa.appendChild(b); if (c.por[x.id] && !vistos[x.id]) { vistos[x.id] = 1; con++; }
+      });
+      var mu = document.createElement('div'); mu.className = 'bloque'; mu.textContent = 'MUEBLE'; mu.style.cssText = 'grid-column:4;grid-row:73 / span 12;writing-mode:vertical-rl;letter-spacing:3px;font-size:11px';
+      mapa.appendChild(mu);
+      var u2 = {}; MP_MODS2.forEach(function (x) { u2[x.id] = 1; });
+      $('mpRes').textContent = con + ' de ' + Object.keys(u2).length + ' módulos con libros ubicados';
     } else {                                                          // sin plano todavía: se arma con lo que ubicaron, fila por fila
       mapa.className = 'mapa auto';
       var filas = {};
