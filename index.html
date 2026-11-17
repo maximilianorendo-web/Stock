@@ -319,8 +319,8 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <div class="sins">
       <button class="sin" id="btnSin" type="button" aria-pressed="false" title="Mostrar solo los libros que todavía no se contaron">Sin contar</button>
       <button class="sin" id="btnCero" type="button" aria-pressed="false" title="Mostrar solo los libros con stock en el sistema">Con stock</button>
-      <button class="sin" id="btnMapa" type="button" title="Mapa del depósito: qué módulos ya tienen libros ubicados (M)">Mapa</button>
-      <button class="sin" id="btnEstantes" type="button" title="Ver las ubicaciones y los libros de cada una (E)">Estantes</button>
+      <button class="sin" id="btnMapa" type="button" aria-label="Mapa del depósito" title="Mapa del depósito: qué módulos ya tienen libros ubicados (M)" style="display:inline-flex;align-items:center;padding:6px 12px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.5 3.5 6.5v13L9 17.5l6 2 5.5-2v-13L15 6.5z"/><path d="M9 4.5v13M15 6.5v13"/></svg></button>
+      <button class="sin" id="btnEstantes" type="button" aria-label="Estantes" title="Estantes: las ubicaciones y los libros de cada una (E)" style="display:inline-flex;align-items:center;padding:6px 12px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="1.5"/><path d="M4 9.2h16M4 14.8h16"/><path d="M7 9.2V6.4M9.5 9.2V5.6M12 9.2V6.8M7.5 14.8v-3.4M10 14.8v-2.8M15.5 14.8v-3.6M7 20.5v-3.2M11.5 20.5v-3.6"/></svg></button>
       <button class="sin" id="btnUbi" type="button" aria-pressed="false" aria-label="Ubicación fija" title="Ubicación donde estás contando: se les pone a todos los libros que cuentes">📍</button>
       <button class="sin" id="btnFoto" type="button" hidden aria-label="Foto de estante" title="Foto de estante: subir fotos de los lomos para ponerles ubicación"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M3 11.5h18"/><path d="M5.5 11.5V6M8.5 11.5V4M11.5 11.5V7M14.5 11.5V5.5"/><path d="M5.5 21v-5M9 21v-7M12.5 21v-4.5M16 21v-6M19 21v-4"/></svg></button>
       <button class="sin orden" id="btnOrden" type="button" aria-pressed="false" aria-label="Ordenar por autor y título" title="Ordenar por autor y título"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M4 12h6M4 17h3"/><path d="M17 5v14M14 16l3 3 3-3"/></svg></button>
@@ -2970,10 +2970,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }, { passive: true });
   })();
   try {
+    /* El escalón de historial hay que crearlo con un toque o una tecla del usuario: si no, Chrome lo salta al apretar "atrás" y se sale de la app.
+       Por eso se arma en el primer gesto y se vuelve a armar en el siguiente si "atrás" lo consumió. */
     history.replaceState({ stock: 0 }, '');
-    history.pushState({ stock: 1 }, '');
+    var armarEscalon = function () { try { if (!history.state || history.state.stock !== 1) history.pushState({ stock: 1 }, ''); } catch (e) {} };
+    ['pointerdown', 'touchstart', 'keydown', 'click'].forEach(function (ev) { document.addEventListener(ev, armarEscalon, true); });
+    armarEscalon();
     window.addEventListener('popstate', function () {
-      if (atras()) { history.pushState({ stock: 1 }, ''); }          // volvió a la base: se vuelve a armar el escalón
+      if (atras()) { armarEscalon(); }                                       // volvió a la base: se vuelve a armar el escalón (y si no se pudo, en el próximo toque)
       else { history.back(); }                                        // no queda nada abierto: ahora sí sale
     });
   } catch (e) {}
