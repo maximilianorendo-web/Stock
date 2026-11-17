@@ -490,7 +490,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <div id="mpRes" class="nota"></div>
     <div id="mpMapa" class="mapa"></div>
     <div id="mpOtros" class="nota"></div>
-    <div class="nota">Azul: módulo con libros ubicados (el número es la cantidad de libros). Tocá un módulo para ver sus niveles y libros · Enter en el cuadro abre el módulo · Esc cierra</div>
+    <div id="mpAyuda" class="nota">Azul: módulo con libros ubicados (el número es la cantidad de libros). Tocá un módulo para ver sus niveles y libros · Enter en el cuadro abre el módulo · Esc cierra</div>
     <button class="btn" id="mpCerrar" type="button">Cerrar</button>
   </div>
 </div>
@@ -1613,6 +1613,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('fUbic').addEventListener('click', editarUbic);
 
   /* ---------- estantes: el listado de ubicaciones, los libros de cada una y renombrarla (admin) ---------- */
+  function enfocarSiTeclado(el, sel) {                      // en el teléfono no se enfoca: saltaba el teclado y tapaba la pantalla
+    try { if (window.matchMedia && matchMedia('(pointer: coarse)').matches) return; } catch (e) {}
+    el.focus(); if (sel) el.select();
+  }
   var UE = { todas: [], vis: [], i: 0, cur: null, modulo: '', desdeMapa: false };
   function moduloDe(u) {                                  // «B-10-3» → «B-10» · «pc» → «PC» · lo que no sigue el esquema → ''
     var n = normUb(u), m = /^([a-z])\s*-\s*(\d{1,2})(?=$|[\s-])/.exec(n);
@@ -1672,7 +1676,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     UE.modulo = typeof modulo === 'string' ? modulo : ''; UE.desdeMapa = !!desdeMapa;
     UE.todas = ueEstantes(); UE.i = 0; UE.cur = null;
     $('ueQ').value = ''; $('ueVistaL').hidden = false; $('ueVistaD').hidden = true;
-    ueDibujarLista(); $('uePanel').hidden = false; $('ueQ').focus();
+    ueDibujarLista(); $('uePanel').hidden = false; enfocarSiTeclado($('ueQ'));
   }
   function ueDetalle(o) {
     UE.cur = o;
@@ -1686,7 +1690,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     });
     if (orden.length > 500) { var n = document.createElement('div'); n.className = 'nota'; n.textContent = 'Se muestran los primeros 500 libros.'; lista.appendChild(n); }
     $('ueVistaL').hidden = true; $('ueVistaD').hidden = false;
-    if (adm) { $('ueIn').focus(); $('ueIn').select(); } else $('ueVolver').focus();
+    if (adm) enfocarSiTeclado($('ueIn'), true);
   }
   function ueNotaRen() {
     var v = limpiarUb($('ueIn').value), o = UE.cur; if (!o) return;
@@ -1705,13 +1709,13 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var nuevoN = normUb(v);
     UE.todas = ueEstantes(); UE.cur = null;
     $('ueQ').value = ''; $('ueVistaD').hidden = true; $('ueVistaL').hidden = false;
-    UE.i = 0; ueDibujarLista(); var pos = UE.vis.filter(function (x) { return x.n === nuevoN; })[0]; UE.i = Math.max(0, UE.vis.indexOf(pos)); ueDibujarLista(); $('ueQ').focus();
+    UE.i = 0; ueDibujarLista(); var pos = UE.vis.filter(function (x) { return x.n === nuevoN; })[0]; UE.i = Math.max(0, UE.vis.indexOf(pos)); ueDibujarLista(); enfocarSiTeclado($('ueQ'));
   }
   function ueIrALibro(k) { UE.desdeMapa = false; cerrarUe(); $('q').value = S.cod[k]; nuevaBusqueda(); }
   function cerrarUe() { $('uePanel').hidden = true; UE.cur = null; }
   function ueAtras() {                       // un paso atrás: del estante a la lista, y de la lista a cerrar. true si hizo algo
     if ($('uePanel').hidden) return false;
-    if (!$('ueVistaD').hidden) { $('ueVistaD').hidden = true; $('ueVistaL').hidden = false; UE.cur = null; $('ueQ').focus(); return true; }
+    if (!$('ueVistaD').hidden) { $('ueVistaD').hidden = true; $('ueVistaL').hidden = false; UE.cur = null; enfocarSiTeclado($('ueQ')); return true; }
     cerrarUe(); if (UE.desdeMapa) { UE.desdeMapa = false; mpAbrir(); } return true;
   }
   $('btnEstantes').addEventListener('click', function () { ueAbrir(); });
@@ -1780,15 +1784,15 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       var e = document.createElement('div'); e.className = 'bloque'; e.textContent = z[0]; e.style.gridRow = z[1]; e.style.gridColumn = z[2]; mapa.appendChild(e);
     });
     $('mpRes').textContent = con + ' de ' + MP_MODS.length + ' módulos con libros ubicados';
-    var n = Object.keys(c.otros.nombres).length;
-    var o = $('mpOtros'); o.innerHTML = '';
-    if (n) {
+    var n = Object.keys(c.otros.nombres).length, adm = nivel() === 'admin';
+    var o = $('mpOtros'); o.innerHTML = ''; o.hidden = !(n && adm); $('mpAyuda').hidden = !adm;
+    if (n && adm) {
       o.appendChild(document.createTextNode(c.otros.libros + ' libros están en ' + n + (n === 1 ? ' ubicación' : ' ubicaciones') + ' que no siguen el esquema (nombres provisorios u otros). '));
       var v = document.createElement('button'); v.type = 'button'; v.className = 'btn chico'; v.textContent = 'Verlas';
       v.addEventListener('click', function () { cerrarMp(); ueAbrir('-', true); });
       o.appendChild(v);
     }
-    $('mpIr').value = ''; $('mpPanel').hidden = false; $('mpIr').focus();
+    $('mpIr').value = ''; $('mpPanel').hidden = false; enfocarSiTeclado($('mpIr'));
   }
   function mpAbrirModulo(id) {
     if (!(mpContar().por[id])) { toast(id + ': todavía sin libros ubicados'); return; }
@@ -2176,7 +2180,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       if (ubp) { var bu = document.createElement('span'); bu.className = 'ubp'; bu.textContent = '📍 ' + ubp; a.appendChild(bu); }     // dónde está, al lado del título
       a.appendChild(document.createTextNode(k != null ? S.tit[k] : it[0]));
       var m = document.createElement('div'); m.className = 'm';
-      m.textContent = 'Pedido: ' + it[1] + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock') + (ok && p.hn && p.hn[it[0]] && normNombre(p.hn[it[0]]) !== normNombre(CFG.nombre) ? ' · separó ' + p.hn[it[0]] : '');
+      m.textContent = 'Pedido: ' + it[1] + (k != null ? ' · ' + S.cod[k] : '') + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock') + (ok && p.hn && p.hn[it[0]] && normNombre(p.hn[it[0]]) !== normNombre(CFG.nombre) ? ' · separó ' + p.hn[it[0]] : '');
       t.appendChild(a); t.appendChild(m);
       f.appendChild(ck); f.appendChild(t);
       if (k != null) { var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]); f.appendChild(d); }
