@@ -284,6 +284,10 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 .mapa .bloque { display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--ink); color: var(--muted); font-weight: 800; letter-spacing: 2px; font-size: 13px;
   background: repeating-linear-gradient(45deg, transparent 0 5px, var(--line) 5px 6px); }
 .mapa .sep { margin-top: 10px; }
+.mapa.auto { display: flex; flex-direction: column; gap: 10px; background-image: none; }
+.mapa.auto .fila { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mapa.auto .fila .nota { width: 56px; padding: 0; }
+.mapa.auto .mod { width: 70px; height: 54px; }
 </style>
 
 </head><body>
@@ -486,7 +490,8 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 <div id="mpPanel" class="panel" hidden>
   <div class="panel-in" style="max-width:640px">
     <div class="aviso">Mapa del depósito</div>
-    <label class="campoc">Ir a un módulo<input id="mpIr" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ej.: D7, B10 o PC"></label>
+    <label class="campoc">Ir a un módulo<input id="mpIr" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ej.: D7, 2B10 o PC"></label>
+    <div id="mpDeps" class="wrap" style="flex-direction:row;flex-wrap:wrap;gap:6px"></div>
     <div id="mpRes" class="nota"></div>
     <div id="mpMapa" class="mapa"></div>
     <div id="mpOtros" class="nota"></div>
@@ -1621,11 +1626,13 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     el.focus(); if (sel) el.select();
   }
   var UE = { todas: [], vis: [], i: 0, cur: null, modulo: '', desdeMapa: false };
-  function moduloDe(u) {                                  // «B-10-3» → «B-10» · «pc» → «PC» · lo que no sigue el esquema → ''
-    var n = normUb(u), m = /^([a-z])\s*-\s*(\d{1,2})(?=$|[\s-])/.exec(n);
-    if (m) return m[1].toUpperCase() + '-' + parseInt(m[2], 10);
-    return /^pc(?=$|[\s-])/.test(n) ? 'PC' : '';
+  function moduloDe(u) {                                  // «1B-10-3» → «1B-10» (depósito 1, fila B, módulo 10) · «B-10-3» (sin depósito) → «1B-10» · «pc» → «PC» · lo que no sigue el esquema → ''
+    var n = normUb(u), m = /^(?:(\d)\s*)?([a-z])\s*-\s*(\d{1,2})(?=$|[\s-])/.exec(n);
+    if (m) return (m[1] || '1') + m[2].toUpperCase() + '-' + parseInt(m[3], 10);
+    m = /^(\d)?\s*pc(?=$|[\s-])/.exec(n);
+    return m ? (!m[1] || m[1] === '1' ? 'PC' : m[1] + 'PC') : '';
   }
+  function depDe(mod) { return mod === 'PC' ? '1' : /^\d/.test(mod) ? mod.charAt(0) : ''; }
   function ueEstantes() {
     var m = {};
     for (var i = 0; i < S.pos.length; i++) {
@@ -1654,7 +1661,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function ueDibujarLista() {
     var q = normUb($('ueQ').value), lista = $('ueLista'); lista.innerHTML = '';
     UE.vis = UE.todas.filter(function (o) {
-      if (UE.modulo === '-' ? moduloDe(o.nom) : UE.modulo && moduloDe(o.nom) !== UE.modulo) return false;
+      var mo = moduloDe(o.nom);
+      if (UE.modulo === '-' ? (mo && (depDe(mo) !== '1' || MP_IDS[mo])) : UE.modulo && mo !== UE.modulo) return false;
       return !q || o.n.indexOf(q) >= 0;
     });
     if (UE.i >= UE.vis.length) UE.i = Math.max(0, UE.vis.length - 1);
@@ -1738,56 +1746,93 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ueAtras(); }
   });
   /* ---------- mapa del depósito ---------- */
+  var MP = { dep: '' };                                                                      // depósito que se está viendo
   var MP_FILAS = { 10: 1, 9: 2, 8: 3, 7: 5, 6: 6, 5: 7, 4: 8, 3: 10, 2: 11, 1: 12 };       // número de módulo -> fila de la grilla
   var MP_COLS = { A: 1, B: 3, C: 4, D: 6, E: 7, F: 9, G: 10 };                              // letra de fila de estantes -> columna
-  var MP_MODS = (function () {
+  var MP_MODS = (function () {                                                               // el plano del depósito 1 (los módulos se llaman 1A-9, 1B-10…)
     var l = [];
     Object.keys(MP_COLS).forEach(function (L) {
       for (var n = 1; n <= 10; n++) {
         if (L === 'A' && n === 10) continue;
         var f = MP_FILAS[n]; if (L === 'A' && n >= 4) f = MP_FILAS[n + 1];                 // la fila A está corrida: A-9 queda a la altura de B-10
-        l.push({ id: L + '-' + n, col: MP_COLS[L], fila: f, v: true });
+        l.push({ id: '1' + L + '-' + n, col: MP_COLS[L], fila: f, v: true });
       }
     });
     l.push({ id: 'PC', col: 1, fila: 8, v: true });
     [['L', 1], ['K', 2], ['J', 3], ['I', 4], ['H', 5]].forEach(function (x) {
-      l.push({ id: x[0] + '-1', col: 1, fila: x[1], lado: true }, { id: x[0] + '-2', col: 2, fila: x[1], lado: true });
+      l.push({ id: '1' + x[0] + '-1', col: 1, fila: x[1], lado: true }, { id: '1' + x[0] + '-2', col: 2, fila: x[1], lado: true });
     });
     return l;
   })();
+  var MP_IDS = {}; MP_MODS.forEach(function (x) { MP_IDS[x.id] = 1; });
   function mpContar() {
-    var por = {}, otros = { libros: 0, nombres: {} };
+    var por = {}, deps = {}, otros = { libros: 0, nombres: {} };
     for (var i = 0; i < S.pos.length; i++) {
       var u = ubicDe(i); if (!u) continue;
-      var m = moduloDe(u);
-      if (m && MP_MODS.some(function (x) { return x.id === m; })) { var o = por[m] || (por[m] = { libros: 0, niveles: {} }); o.libros++; o.niveles[normUb(u)] = 1; }
+      var m = moduloDe(u), d = m ? depDe(m) : '';
+      if (m) deps[d] = (deps[d] || 0) + 1;
+      if (m && (d !== '1' || MP_IDS[m])) { var o = por[m] || (por[m] = { libros: 0, niveles: {} }); o.libros++; o.niveles[normUb(u)] = 1; }
       else { otros.libros++; otros.nombres[normUb(u)] = 1; }
     }
-    return { por: por, otros: otros };
+    return { por: por, deps: deps, otros: otros };
+  }
+  function mpBoton(id, d, clase) {
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'mod' + clase + (d ? ' on' : '');
+    b.setAttribute('aria-label', id + (d ? ': ' + d.libros + ' libros en ' + Object.keys(d.niveles).length + ' niveles' : ': sin libros ubicados'));
+    b.innerHTML = '<span class="in"><b></b><small></small></span>';
+    b.querySelector('b').textContent = id; b.querySelector('small').textContent = d ? d.libros : '';
+    b.addEventListener('click', function () { mpAbrirModulo(id); });
+    return b;
   }
   function mpAbrir() {
     if (!S) { toast('Todavía no hay datos cargados'); return; }
-    var c = mpContar(), mapa = $('mpMapa'); mapa.innerHTML = '';
-    var con = 0, lado = document.createElement('div');
-    lado.style.cssText = 'grid-column:12 / 14;grid-row:5 / 9;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);margin:0 0 0 6px';
-    mapa.appendChild(lado);
-    MP_MODS.forEach(function (x) {
-      var d = c.por[x.id], b = document.createElement('button'); b.type = 'button';
-      b.className = 'mod' + (x.v ? ' v' : '') + (d ? ' on' : '') + (x.sep ? ' sep' : '');
-      b.style.gridColumn = x.col; b.style.gridRow = x.fila;
-      if (x.lado) b.style.margin = (x.fila === 2 || x.fila === 4 ? '10px' : '0') + ' 0 0 0';
-      b.setAttribute('aria-label', x.id + (d ? ': ' + d.libros + ' libros en ' + Object.keys(d.niveles).length + ' niveles' : ': sin libros ubicados'));
-      b.innerHTML = '<span class="in"><b></b><small></small></span>';
-      b.querySelector('b').textContent = x.id; b.querySelector('small').textContent = d ? d.libros : '';
-      if (d) con++;
-      b.addEventListener('click', function () { mpAbrirModulo(x.id); });
-      (x.lado ? lado : mapa).appendChild(b);
+    var c = mpContar();
+    var depsLista = ['1', '2', '3'].concat(Object.keys(c.deps).filter(function (d) { return d > '3'; })).sort();
+    if (!MP.dep) MP.dep = depsLista.slice().sort(function (a, b) { return (c.deps[b] || 0) - (c.deps[a] || 0); })[0] || '1';
+    var chips = $('mpDeps'); chips.innerHTML = '';
+    depsLista.forEach(function (d) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'sin'; b.setAttribute('aria-pressed', d === MP.dep ? 'true' : 'false');
+      b.textContent = 'Depósito ' + d + (c.deps[d] ? ' · ' + c.deps[d] : '');
+      b.addEventListener('click', function () { MP.dep = d; mpAbrir(); });
+      chips.appendChild(b);
     });
-    [['ESCALERA', '1 / 4', '11 / 14'], ['DESPACHO', '9 / 13', '11 / 14']].forEach(function (z) {
-      var e = document.createElement('div'); e.className = 'bloque'; e.textContent = z[0]; e.style.gridRow = z[1]; e.style.gridColumn = z[2]; mapa.appendChild(e);
-    });
-    $('mpRes').textContent = con + ' de ' + MP_MODS.length + ' módulos con libros ubicados';
-    var n = Object.keys(c.otros.nombres).length, adm = nivel() === 'admin';
+    var mapa = $('mpMapa'); mapa.innerHTML = ''; mapa.className = 'mapa';
+    var con = 0, total = 0, adm = nivel() === 'admin';
+    if (MP.dep === '1') {
+      var lado = document.createElement('div');
+      lado.style.cssText = 'grid-column:12 / 14;grid-row:5 / 9;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);margin:0 0 0 6px';
+      mapa.appendChild(lado);
+      MP_MODS.forEach(function (x) {
+        var b = mpBoton(x.id, c.por[x.id], x.v ? ' v' : '');
+        b.style.gridColumn = x.col; b.style.gridRow = x.fila;
+        if (x.lado) b.style.margin = (x.fila === 2 || x.fila === 4 ? '10px' : '0') + ' 0 0 0';
+        if (c.por[x.id]) con++;
+        (x.lado ? lado : mapa).appendChild(b);
+      });
+      [['ESCALERA', '1 / 4', '11 / 14'], ['DESPACHO', '9 / 13', '11 / 14']].forEach(function (z) {
+        var e = document.createElement('div'); e.className = 'bloque'; e.textContent = z[0]; e.style.gridRow = z[1]; e.style.gridColumn = z[2]; mapa.appendChild(e);
+      });
+      total = MP_MODS.length;
+      $('mpRes').textContent = con + ' de ' + total + ' módulos con libros ubicados';
+    } else {                                                          // sin plano todavía: se arma con lo que ubicaron, fila por fila
+      mapa.className = 'mapa auto';
+      var filas = {};
+      Object.keys(c.por).filter(function (id) { return depDe(id) === MP.dep; }).forEach(function (id) {
+        var m = /^\d([A-Z]+)-(\d+)$/.exec(id), clave = m ? m[1] : id;
+        (filas[clave] = filas[clave] || []).push({ id: id, n: m ? +m[2] : 0 });
+        con++;
+      });
+      Object.keys(filas).sort().forEach(function (L) {
+        var f = document.createElement('div'); f.className = 'fila';
+        var t = document.createElement('span'); t.className = 'nota'; t.textContent = 'Fila ' + L; f.appendChild(t);
+        filas[L].sort(function (a, b) { return a.n - b.n; }).forEach(function (x) { f.appendChild(mpBoton(x.id, c.por[x.id], '')); });
+        mapa.appendChild(f);
+      });
+      if (!con) { var v0 = document.createElement('div'); v0.className = 'nota'; v0.textContent = 'Todavía no hay libros ubicados en el depósito ' + MP.dep + '.'; mapa.appendChild(v0); }
+      $('mpRes').textContent = con + (con === 1 ? ' módulo' : ' módulos') + ' con libros ubicados' + (adm ? ' · todavía no hay plano del depósito ' + MP.dep : '');
+    }
+    var n = Object.keys(c.otros.nombres).length;
     var o = $('mpOtros'); o.innerHTML = ''; o.hidden = !(n && adm); $('mpAyuda').hidden = !adm;
     if (n && adm) {
       o.appendChild(document.createTextNode(c.otros.libros + ' libros están en ' + n + (n === 1 ? ' ubicación' : ' ubicaciones') + ' que no siguen el esquema (nombres provisorios u otros). '));
@@ -1809,8 +1854,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarMp(); }
     else if (e.key === 'Enter') {
       e.preventDefault();
-      var t = $('mpIr').value.replace(/\s+/g, '').toUpperCase(), m = /^([A-L])-?(\d{1,2})$/.exec(t), id = t === 'PC' ? 'PC' : m ? m[1] + '-' + parseInt(m[2], 10) : '';
-      if (id && MP_MODS.some(function (x) { return x.id === id; })) mpAbrirModulo(id); else toast('No encuentro ese módulo: probá con D7, B10 o PC');
+      var t = $('mpIr').value.replace(/\s+/g, '').toUpperCase(), m = /^(\d)?([A-Z])-?(\d{1,2})$/.exec(t), p = /^(\d)?PC$/.exec(t);
+      var id = p ? (!p[1] || p[1] === '1' ? 'PC' : p[1] + 'PC') : m ? (m[1] || MP.dep || '1') + m[2] + '-' + parseInt(m[3], 10) : '';
+      if (id) mpAbrirModulo(id); else toast('No encuentro ese módulo: probá con D7, 1B10 o PC');
     }
   });
   $('mpPanel').addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarMp(); } });
