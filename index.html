@@ -191,6 +191,7 @@ body.consulta #fDep { pointer-events: none; }
 .campoc textarea { font: inherit; font-size: 16px; font-weight: 400; color: var(--ink); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 11px 12px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; }
 .campoc textarea:focus { border-color: var(--accent); outline: none; }
 .fila.ped { cursor: default; gap: 10px; }
+.ubp { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 800; white-space: nowrap; vertical-align: 1px; }
 .fila.ped .txt { cursor: pointer; }
 .fila.ped.hecho .t { text-decoration: line-through; color: var(--muted); }
 .chk { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); color: var(--accent-ink); font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
@@ -2170,7 +2171,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       ck.setAttribute('aria-checked', ok); ck.setAttribute('aria-label', 'Separado'); ck.textContent = ok ? '✓' : '';
       ck.addEventListener('click', function () { marcarHecho(p, it[0], !(p.hechos && p.hechos[it[0]])); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); });
       var t = document.createElement('div'); t.className = 'txt';
-      var a = document.createElement('div'); a.className = 't'; a.textContent = k != null ? S.tit[k] : it[0];
+      var a = document.createElement('div'); a.className = 't';
+      var ubp = k != null ? ubicDe(k) : '';
+      if (ubp) { var bu = document.createElement('span'); bu.className = 'ubp'; bu.textContent = '📍 ' + ubp; a.appendChild(bu); }     // dónde está, al lado del título
+      a.appendChild(document.createTextNode(k != null ? S.tit[k] : it[0]));
       var m = document.createElement('div'); m.className = 'm';
       m.textContent = 'Pedido: ' + it[1] + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock') + (ok && p.hn && p.hn[it[0]] && normNombre(p.hn[it[0]]) !== normNombre(CFG.nombre) ? ' · separó ' + p.hn[it[0]] : '');
       t.appendChild(a); t.appendChild(m);
