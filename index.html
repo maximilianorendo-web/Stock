@@ -781,10 +781,11 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var e = $('toast'); e.textContent = t; e.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 2600);
   }
+  var VERSION = 'v82';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
   function estado() {
     var e = $('estado');
     var sub = MOV.filter(function (m) { return !m.subido && !m.ajeno; }).length;
-    var nube = CFG.activo ? ' · ☁ ' + NUBE.estado + (sub ? ' · ⏳ ' + sub + ' sin subir' : '') : '';
+    var nube = (CFG.activo ? ' · ☁ ' + NUBE.estado + (sub ? ' · ⏳ ' + sub + ' sin subir' : '') : '') + ' · ' + VERSION;
     if (!S) { e.textContent = 'Sin stock cargado' + nube; $('btnCargar').textContent = 'Cargar stock.csv'; return; }
     e.innerHTML = '<b></b><br><span></span>';
     e.querySelector('b').textContent = S.nombre;
@@ -2760,6 +2761,18 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('q').addEventListener('input', function () { clearTimeout(tq); tq = setTimeout(nuevaBusqueda, 160); });
   $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(tq); nuevaBusqueda(); this.blur(); if ((ANCHO.matches || !puedeContar()) && res.length === 1) { irResultado(0); if (!puedeContar() && sel >= 0) abrirTapa(); } } });
   $('borrarQ').addEventListener('click', function () { $('q').value = ''; nuevaBusqueda(); $('q').focus(); });
+  /* Control de escritura: cuenta las teclas que llegan al cuadro de búsqueda y las que terminan escritas. Si no coinciden, avisa (y qué pasó). */
+  var ESC = { teclas: 0, escritas: 0, frenadas: 0, t: null, raro: false };
+  $('q').addEventListener('keydown', function (e) {
+    if (e.key.length !== 1 || e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
+    ESC.teclas++; if (e.defaultPrevented) ESC.frenadas++;
+    clearTimeout(ESC.t); ESC.t = setTimeout(function () {
+      var m = ESC.teclas, w = ESC.escritas, f = ESC.frenadas, raro = ESC.raro; ESC.teclas = ESC.escritas = ESC.frenadas = 0; ESC.raro = false;
+      if (!raro && m !== w && m > 3) { toast('⚠ Se escribieron ' + w + ' de ' + m + ' teclas (' + f + ' frenadas por la app). Contale a Claude.', 6000); try { console.warn('escritura', { teclas: m, escritas: w, frenadas: f }); } catch (er) {} }
+    }, 900);
+  });
+  $('q').addEventListener('input', function (e) { if (e.inputType === 'insertText') ESC.escritas++; else ESC.raro = true; });
+  ['paste', 'cut', 'drop', 'compositionstart'].forEach(function (ev) { $('q').addEventListener(ev, function () { ESC.raro = true; }); });
   /* Lector de código de barras USB / bluetooth (los que escriben como un teclado): una ráfaga rápida de números y Enter es una lectura.
      Funciona sin tener el cursor en ninguna parte: busca el libro y lo deja elegido, listo para + − Ok. */
   var LEC = { buf: '', t: 0, rafaga: false };
