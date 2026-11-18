@@ -2760,6 +2760,35 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   $('q').addEventListener('input', function () { clearTimeout(tq); tq = setTimeout(nuevaBusqueda, 160); });
   $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(tq); nuevaBusqueda(); this.blur(); if ((ANCHO.matches || !puedeContar()) && res.length === 1) { irResultado(0); if (!puedeContar() && sel >= 0) abrirTapa(); } } });
   $('borrarQ').addEventListener('click', function () { $('q').value = ''; nuevaBusqueda(); $('q').focus(); });
+  /* Lector de código de barras USB / bluetooth (los que escriben como un teclado): una ráfaga rápida de números y Enter es una lectura.
+     Funciona sin tener el cursor en ninguna parte: busca el libro y lo deja elegido, listo para + − Ok. */
+  var LEC = { buf: '', t: 0, rafaga: false };
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.altKey || e.metaKey || !S) return;
+    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || $('vistaBuscar').hidden) { LEC.buf = ''; return; }
+    var tg = e.target, tag = tg && tg.tagName;
+    if ((tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') && tg.id !== 'q' && tg.id !== 'fIn') { LEC.buf = ''; return; }
+    var ahora = Date.now(), k = e.key;
+    if (k.length === 1) {
+      if (ahora - LEC.t > 80) { LEC.buf = ''; LEC.rafaga = false; }
+      else if (LEC.buf) LEC.rafaga = true;                              // el segundo caracter llegó enseguida: es el lector, no una persona
+      LEC.buf += k; LEC.t = ahora;
+      if (LEC.rafaga) { e.preventDefault(); e.stopImmediatePropagation(); }   // del segundo en adelante no se escribe en ningún cuadro
+      return;
+    }
+    if ((k === 'Enter' || k === 'Tab') && LEC.rafaga && /^[0-9]{8,14}$/.test(LEC.buf) && ahora - LEC.t <= 80) {
+      var cod = LEC.buf; LEC.buf = ''; LEC.rafaga = false;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (!$('fIn').hidden) aplicarCant(true);                          // el primer número alcanzó a abrir el cuadro de cantidad: se descarta
+      var i = libroPorCod(cod);
+      $('q').blur(); $('q').value = cod; nuevaBusqueda();
+      if (i == null) { pitar(false); toast('No está en el stock: ' + cod); return; }
+      var j = res.indexOf(i); if (j < 0 && res.length === 1) j = 0;
+      if (j >= 0) { irResultado(j); pitar(true); }
+      return;
+    }
+    LEC.buf = ''; LEC.rafaga = false;
+  }, true);
   var REC = null, SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   function dictar() {
     if (REC) { try { REC.stop(); } catch (e) {} return; }
