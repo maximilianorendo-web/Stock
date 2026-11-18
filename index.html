@@ -2920,6 +2920,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if ((t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') && !enQ) return;
     var flecha = k === 'ArrowDown' || k === 'ArrowUp' || k === 'PageDown' || k === 'PageUp';
     if (flecha && !$('fIn').hidden) return;                              // escribiendo una cantidad
+    if ((k === 'ArrowUp' || k === 'ArrowDown') && sel >= 0 && res.length <= 1 && puedeContar()) {   // un solo libro (lo típico con el lector): ↑ suma y ↓ resta
+      if (enQ) $('q').blur();
+      cambiar(k === 'ArrowUp' ? 1 : -1); e.preventDefault(); return;
+    }
     if (flecha) {
       moverResultado(k === 'ArrowDown' ? 1 : k === 'ArrowUp' ? -1 : k === 'PageDown' ? TAM : -TAM);
       if (enQ) $('q').blur();                                            // así quedan listos + − Ok y los números
@@ -2932,7 +2936,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (k === '/') { enfocarBuscar(); e.preventDefault(); return; }
     if ((k === 'e' || k === 'E') && t !== 'BUTTON') { ueAbrir(); e.preventDefault(); return; }
     if ((k === 'm' || k === 'M') && t !== 'BUTTON') { mpAbrir(''); e.preventDefault(); return; }
-    if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · E estantes · M mapa · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc borra búsqueda y filtros'); e.preventDefault(); return; }
+    if (k === '?') { toast('↑ ↓ moverse (con un solo libro: ↑ suma, ↓ resta) · / buscar · A autor · E estantes · M mapa · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc borra búsqueda y filtros'); e.preventDefault(); return; }
     if (k === 'Escape') { limpiarTodo(); enfocarBuscar(); e.preventDefault(); return; }       // Esc: borra la búsqueda y los filtros, y queda listo para escribir
     if ((k === 'h' || k === 'H') && sel >= 0) { abrirHist(); e.preventDefault(); return; }
     if (k === 's' || k === 'S') { $('btnCero').click(); e.preventDefault(); return; }   // S: con Stock
