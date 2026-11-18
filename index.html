@@ -1572,7 +1572,16 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   var UBSEL = -1, UBMISMAS = [];
   function normUb(t) { return norm(String(t || '').replace(/\s+/g, ' ').trim()); }
-  function limpiarUb(v) { return String(v || '').replace(/\s+/g, ' ').trim().slice(0, 40); }
+  function limpiarUb(v) {                          // espacios de más fuera; si sigue el esquema (1d - 7 - 2) se escribe siempre igual: 1D-7-2
+    var t = String(v || '').replace(/\s+/g, ' ').trim().slice(0, 40), m = /^(\d)?\s*([A-Za-z])\s*-\s*(\d{1,2})\s*-\s*(\d{1,2})$/.exec(t);
+    return m ? (m[1] || '') + m[2].toUpperCase() + '-' + parseInt(m[3], 10) + '-' + parseInt(m[4], 10) : t;
+  }
+  function avisoUb(v) {                            // '' si está bien; si no, qué no cuadra con el plano (solo avisa, no impide)
+    var m = /^(\d)?([A-Z])-(\d{1,2})-\d{1,2}$/.exec(v || '');
+    if (!m) return '';
+    var d = m[1] || '1', id = d + m[2] + '-' + parseInt(m[3], 10);
+    return MP_PLANO[d] && !MP_IDS[id] ? 'el módulo ' + id + ' no existe en el plano del depósito ' + d : '';
+  }
   function editarUbic() {
     if (sel < 0 || !S) return;
     if (!puedeContar()) { sinPermiso(); return; }
@@ -1592,7 +1601,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function guardarUbUno() {
     var k = UBSEL; if (k < 0) return;
     var v = limpiarUb($('ubIn').value);
-    cerrarUb(); ponerUbic(k, v); if (k === sel) pintarFicha(); toast(v ? '📍 ' + v : 'Ubicación borrada');
+    cerrarUb(); ponerUbic(k, v); if (k === sel) pintarFicha(); toast(v ? '📍 ' + v + (avisoUb(v) ? ' · ⚠ ' + avisoUb(v) : '') : 'Ubicación borrada');
   }
   function renombrarLista(lista, v, viejo) {                    // todos los libros de `lista` pasan a la ubicación v (se sube a la nube)
     var ahora = Date.now(), q = CFG.nombre || '';
@@ -1611,7 +1620,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (nivel() !== 'admin') { toast('Solo el administrador renombra un estante entero'); return; }
     cerrarUb();
     renombrarLista(lista, v, viejo);
-    toast('📍 ' + lista.length + ' libros ahora en ' + v);
+    toast('📍 ' + lista.length + ' libros ahora en ' + v + (avisoUb(v) ? ' · ⚠ ' + avisoUb(v) : ''));
   }
   $('ubUno').addEventListener('click', guardarUbUno);
   $('ubTodos').addEventListener('click', guardarUbTodos);
@@ -1713,7 +1722,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function ueNotaRen() {
     var v = limpiarUb($('ueIn').value), o = UE.cur; if (!o) return;
     var otro = v && normUb(v) !== o.n && UE.todas.filter(function (x) { return x.n === normUb(v); })[0];
-    $('ueNota').textContent = !v ? 'Escribí el nombre nuevo.' : otro ? 'Ya existe «' + otro.nom + '» con ' + otro.idx.length + ' libros: se juntan con estos.' : (o.idx.length === 1 ? 'El libro pasa' : 'Los ' + o.idx.length + ' libros pasan') + ' a «' + v + '». Los otros teléfonos lo reciben solos.';
+    $('ueNota').textContent = (!v ? 'Escribí el nombre nuevo.' : otro ? 'Ya existe «' + otro.nom + '» con ' + otro.idx.length + ' libros: se juntan con estos.' : (o.idx.length === 1 ? 'El libro pasa' : 'Los ' + o.idx.length + ' libros pasan') + ' a «' + v + '». Los otros teléfonos lo reciben solos.') + (avisoUb(v) ? ' ⚠ Ojo: ' + avisoUb(v) + '.' : '');
     $('ueOk').textContent = o.idx.length === 1 ? 'Renombrar' : 'Renombrar los ' + o.idx.length + ' libros';
   }
   function ueRenombrar() {
@@ -1723,7 +1732,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!v) { toast('Escribí el nombre nuevo del estante'); return; }
     if (v === o.nom && Object.keys(o.nombres).length < 2) { toast('Ese ya es el nombre'); return; }
     renombrarLista(o.idx.slice(), v, o.nom);
-    toast('📍 ' + o.idx.length + ' libros ahora en ' + v);
+    toast('📍 ' + o.idx.length + ' libros ahora en ' + v + (avisoUb(v) ? ' · ⚠ ' + avisoUb(v) : ''));
     var nuevoN = normUb(v);
     UE.todas = ueEstantes(); UE.cur = null;
     $('ueQ').value = ''; $('ueVistaD').hidden = true; $('ueVistaL').hidden = false;
