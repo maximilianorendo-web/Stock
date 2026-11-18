@@ -2765,7 +2765,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   var LEC = { buf: '', t: 0, rafaga: false };
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey || !S) return;
-    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || $('vistaBuscar').hidden) { LEC.buf = ''; return; }
+    var enScan = !$('scan').hidden;                                       // con el panel de la cámara abierto el lector hace lo mismo que la cámara
+    if (!$('ediPanel').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || (!enScan && $('vistaBuscar').hidden)) { LEC.buf = ''; return; }
     var tg = e.target, tag = tg && tg.tagName;
     if ((tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') && tg.id !== 'q' && tg.id !== 'fIn') { LEC.buf = ''; return; }
     var ahora = Date.now(), k = e.key;
@@ -2779,6 +2780,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if ((k === 'Enter' || k === 'Tab') && LEC.rafaga && /^[0-9]{8,14}$/.test(LEC.buf) && ahora - LEC.t <= 80) {
       var cod = LEC.buf; LEC.buf = ''; LEC.rafaga = false;
       e.preventDefault(); e.stopImmediatePropagation();
+      if (enScan) { procesarCodigo(cod); return; }                       // Consultar: abre la ficha y al dar Ok vuelve al lector · Contar: suma 1
       if (!$('fIn').hidden) aplicarCant(true);                          // el primer número alcanzó a abrir el cuadro de cantidad: se descarta
       var i = libroPorCod(cod);
       $('q').blur(); $('q').value = cod; nuevaBusqueda();
