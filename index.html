@@ -2783,7 +2783,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       if (enScan) { procesarCodigo(cod); return; }                       // Consultar: abre la ficha y al dar Ok vuelve al lector · Contar: suma 1
       if (!$('fIn').hidden) aplicarCant(true);                          // el primer número alcanzó a abrir el cuadro de cantidad: se descarta
       var i = libroPorCod(cod);
-      $('q').blur(); $('q').value = cod; nuevaBusqueda();
+      try { if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } catch (er) {}   // el foco no queda en ningún botón (si no, el Enter siguiente lo apretaría en vez de dar Ok)
+      $('q').value = cod; nuevaBusqueda();
       if (i == null) { pitar(false); toast('No está en el stock: ' + cod); return; }
       var j = res.indexOf(i); if (j < 0 && res.length === 1) j = 0;
       if (j >= 0) { irResultado(j); pitar(true); }
