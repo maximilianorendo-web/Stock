@@ -2769,15 +2769,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!$('ediPanel').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || (!enScan && $('vistaBuscar').hidden)) { LEC.buf = ''; return; }
     var tg = e.target, tag = tg && tg.tagName;
     if ((tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') && tg.id !== 'q' && tg.id !== 'fIn') { LEC.buf = ''; return; }
-    var ahora = Date.now(), k = e.key;
+    var ahora = e.timeStamp, k = e.key;                                   // la hora en que se apretó la tecla (no la en que la página llegó a atenderla: si va cargada, se atrasa)
     if (k.length === 1) {
-      if (ahora - LEC.t > 80) { LEC.buf = ''; LEC.rafaga = false; }
-      else if (LEC.buf) LEC.rafaga = true;                              // el segundo caracter llegó enseguida: es el lector, no una persona
+      if (ahora - LEC.t > 120) { LEC.buf = ''; LEC.rafaga = false; }
+      else if (LEC.buf) LEC.rafaga = true;                              // llegó enseguida de la anterior: es el lector, no una persona
       LEC.buf += k; LEC.t = ahora;
-      if (LEC.rafaga) { e.preventDefault(); e.stopImmediatePropagation(); }   // del segundo en adelante no se escribe en ningún cuadro
-      return;
+      return;                                                           // nunca se descarta una tecla: si no resulta ser una lectura, se escribió normal
     }
-    if ((k === 'Enter' || k === 'Tab') && LEC.rafaga && /^[0-9]{8,14}$/.test(LEC.buf) && ahora - LEC.t <= 80) {
+    if ((k === 'Enter' || k === 'Tab') && LEC.rafaga && /^[0-9]{8,14}$/.test(LEC.buf) && ahora - LEC.t <= 120) {
       var cod = LEC.buf; LEC.buf = ''; LEC.rafaga = false;
       e.preventDefault(); e.stopImmediatePropagation();
       if (enScan) { procesarCodigo(cod); return; }                       // Consultar: abre la ficha y al dar Ok vuelve al lector · Contar: suma 1
