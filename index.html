@@ -2126,7 +2126,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function enviarAcks() {
     if (!nubeOn() || !normNombre(CFG.nombre)) return;
     PEDIDOS.forEach(function (q) {
-      if (!q.ackPend || q.mio) return;
+      if (!q.ackPend || q.mio || q.obs) return;
       var hechos = q.items.filter(function (x) { return q.hechos && q.hechos[x[0]]; }).length;
       var cerrado = pedCompleto(q) ? (q.cerrado || Date.now()) : 0;
       q.cerrado = cerrado;
@@ -2181,23 +2181,23 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }).catch(function () {});
   }
   setInterval(function () { if (!document.hidden && $('vistaPedidos') && !$('vistaPedidos').hidden && PEDABIERTO) bajarHechos(); }, 4000);
-  function guardarPedidos() { PEDIDOS = PEDIDOS.slice(-40); guardar('pedidos', PEDIDOS); contarPedidos(); }
+  function guardarPedidos() { PEDIDOS = PEDIDOS.slice(-150); guardar('pedidos', PEDIDOS); contarPedidos(); }
   function contarPedidos() {
-    var n = PEDIDOS.filter(function (p) { return !p.mio && !pedCompleto(p); }).length;
+    var n = PEDIDOS.filter(function (p) { return !p.mio && !p.obs && !pedCompleto(p); }).length;
     $('nPed').textContent = n ? '(' + n + ')' : '';
   }
   function pedCompleto(p) { return p.items.length && p.items.every(function (x) { return p.hechos && p.hechos[x[0]]; }); }
   function agregarPedido(m, mio) {                    // true si era nuevo
     var id = m.id || ('p' + Date.now().toString(36));
     if (PEDBORR[id] || PEDIDOS.some(function (p) { return p.id === id; })) return false;
-    if (PEDIDOS.length >= 40 && (m.t || 0) < PEDIDOS[0].t) return false;
+    if (PEDIDOS.length >= 150 && (m.t || 0) < PEDIDOS[0].t) return false;
     var it = limpiarItems(m.pedido);
     if (!it.length) return false;
-    PEDIDOS.push({ id: id, t: m.t || Date.now(), items: it, hechos: {}, cliente: String(m.cliente || '').slice(0, 80), de: m.de || '', para: m.paraNombre || '', mio: !!mio });
+    PEDIDOS.push({ id: id, t: m.t || Date.now(), items: it, hechos: {}, cliente: String(m.cliente || '').slice(0, 80), de: m.de || '', para: m.paraNombre || '', mio: mio === true, obs: mio === 'obs' });   // obs: pedido de otro teléfono que ve el administrador (sin avisos ni confirmaciones)
     PEDIDOS.sort(function (a, b) { return a.t - b.t; });
-    if (!mio) PEDIDOS.forEach(function (q) { if (q.id === id) { q.rec = Date.now(); q.ackPend = true; } });
+    if (mio === false) PEDIDOS.forEach(function (q) { if (q.id === id) { q.rec = Date.now(); q.ackPend = true; } });
     guardarPedidos();
-    if (!mio) enviarAcks();
+    if (mio === false) enviarAcks();
     return true;
   }
   function fechaCorta(t) { return new Date(t).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
@@ -2214,7 +2214,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         d.appendChild(b); d.appendChild(sp); c.appendChild(d); return;
       }
       var caja = document.createElement('div'); caja.className = 'lista';
-      PEDIDOS.slice().reverse().forEach(function (q) {
+      var adm = nivel() === 'admin', visibles = PEDIDOS.filter(function (q) { return adm || !q.obs; });
+      if (adm) {                                                  // el administrador ve todos los pedidos y cómo avanzan
+        var enCurso = visibles.filter(function (q) { return !pedCompleto(q); }).length;
+        var rs = document.createElement('div'); rs.className = 'nota'; rs.style.margin = '0 0 8px';
+        rs.textContent = visibles.length + (visibles.length === 1 ? ' pedido' : ' pedidos') + ' · ' + enCurso + ' en curso · ' + (visibles.length - enCurso) + ' completos';
+        c.appendChild(rs);
+      }
+      visibles.slice().reverse().forEach(function (q) {
         var tot = 0, hechos = 0, hej = 0;
         q.items.forEach(function (x) { tot += x[1]; if (q.hechos && q.hechos[x[0]]) { hechos++; hej += x[1]; } });
         var f = document.createElement('button'); f.type = 'button'; f.className = 'fila';
@@ -2222,7 +2229,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var a = document.createElement('div'); a.className = 't';
         a.textContent = (q.cliente || 'Pedido') + ' · ' + q.items.length + (q.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot + (tot === 1 ? ' ejemplar' : ' ejemplares');
         var m = document.createElement('div'); m.className = 'm';
-        m.textContent = fechaCorta(q.t) + (q.mio ? ' · enviado' + (q.para ? ' a ' + q.para : '') : q.de ? ' · de ' + q.de : ' · de la PC') + ' · separados ' + hechos + ' de ' + q.items.length;
+        m.textContent = fechaCorta(q.t) + (q.mio ? ' · enviado' + (q.para ? ' a ' + q.para : '') : q.obs ? ' · para ' + (q.para || '?') + (q.de ? ' · de ' + q.de : '') : q.de ? ' · de ' + q.de : ' · de la PC') + ' · separados ' + hechos + ' de ' + q.items.length + (q.obs && q.items.length ? ' (' + Math.round(100 * hechos / q.items.length) + '%)' : '');
         t.appendChild(a); t.appendChild(m); f.appendChild(t);
         var d2 = document.createElement('div'); d2.className = 'd'; d2.textContent = pedCompleto(q) ? '✓' : ''; f.appendChild(d2);
         f.addEventListener('click', function () { PEDABIERTO = q.id; pintarPedidos(); window.scrollTo({ top: 0 }); });
@@ -2239,7 +2246,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var tb2 = document.createElement('b');
     tb2.textContent = (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot2 + (tot2 === 1 ? ' ejemplar' : ' ejemplares');
     var sub = document.createElement('span'); sub.className = 'sub';
-    sub.textContent = 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares';
+    sub.textContent = (p.obs ? 'Para ' + (p.para || '?') + (p.de ? ' · de ' + p.de : '') + ' · solo lectura · ' : '') + 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares';
     tb2.appendChild(sub);
     cab.appendChild(bt); cab.appendChild(tb2); c.appendChild(cab);
     var lista = document.createElement('div'); lista.className = 'lista';
@@ -2248,7 +2255,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       var f = document.createElement('div'); f.className = 'fila ped' + (ok ? ' hecho' : '') + (k == null ? ' nohay' : '');
       var ck = document.createElement('button'); ck.type = 'button'; ck.className = 'chk'; ck.setAttribute('role', 'checkbox');
       ck.setAttribute('aria-checked', ok); ck.setAttribute('aria-label', 'Separado'); ck.textContent = ok ? '✓' : '';
-      ck.addEventListener('click', function () { marcarHecho(p, it[0], !(p.hechos && p.hechos[it[0]])); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); });
+      if (p.obs) ck.disabled = true;
+      ck.addEventListener('click', function () { if (p.obs) return; marcarHecho(p, it[0], !(p.hechos && p.hechos[it[0]])); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); });
       var t = document.createElement('div'); t.className = 'txt';
       var a = document.createElement('div'); a.className = 't';
       var ubp = k != null ? ubicDe(k) : '';
@@ -2310,6 +2318,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       var yo = normNombre(CFG.nombre);
       ids.forEach(function (id) {
         var m = d[id] || {};
+        if (m.pedido && m.para && m.para !== yo && nivel() === 'admin') { m.id = id; if (agregarPedido(m, 'obs') && $('vistaPedidos') && !$('vistaPedidos').hidden && !PEDABIERTO) pintarPedidos(); }
         if (m.pedido && (!m.para || m.para === yo)) { m.id = id; if (agregarPedido(m, false) && $('vistaPedidos') && !$('vistaPedidos').hidden && !PEDABIERTO) pintarPedidos(); }   // los pedidos se guardan aunque el aviso ya se haya visto
         if (MSGV[id]) return;
         MSGV[id] = 1;
