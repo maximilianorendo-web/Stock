@@ -280,6 +280,8 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 .mapa .mod b { font-size: 12px; }
 .mapa .mod small { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .mapa .mod.on { background: var(--accent-soft); }
+.mapa .mod.sel { background: #d92d20; border-color: #b42318; color: #fff; }
+.mapa .mod.sel small, .mapa .mod.sel.on small, .mapa .mod.sel b { color: #fff; }
 .mapa .mod.on small { color: var(--accent); font-weight: 700; }
 .mapa .mod:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; z-index: 2; }
 .mapa .bloque { display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--ink); color: var(--muted); font-weight: 800; letter-spacing: 2px; font-size: 13px;
@@ -352,7 +354,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       </div>
       <div class="otros"><span id="fDep11"></span><span id="fPvp"></span></div>
       </div><img id="fMini" class="mini" alt="Tapa" referrerpolicy="no-referrer" hidden></div>
-      <div class="ubic"><button type="button" class="btn chico" id="fUbic" aria-label="Ubicación del libro"></button> <button type="button" class="btn chico" id="fTapa">Tapa</button> <button type="button" class="btn chico" id="fHist" aria-label="Movimientos de este libro" title="Movimientos de este libro (H)" hidden>🕘 Movimientos</button></div>
+      <div class="ubic"><button type="button" class="btn chico" id="fUbic" aria-label="Ubicación del libro"></button> <button type="button" class="btn chico" id="fMapaUb" aria-label="Ver en el mapa dónde está" title="Ver en el mapa dónde está (en rojo)" style="display:inline-flex;align-items:center;padding:6px 10px" hidden><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.5 3.5 6.5v13L9 17.5l6 2 5.5-2v-13L15 6.5z"/><path d="M9 4.5v13M15 6.5v13"/></svg></button> <button type="button" class="btn chico" id="fTapa">Tapa</button> <button type="button" class="btn chico" id="fHist" aria-label="Movimientos de este libro" title="Movimientos de este libro (H)" hidden>🕘 Movimientos</button></div>
       <div class="tres">
         <button type="button" class="menos" id="bMenos" aria-label="Restar uno">−</button>
         <button type="button" class="ok" id="bOk" aria-label="Confirmar el cambio">Ok</button>
@@ -500,6 +502,7 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <label class="campoc">Ir a un módulo<input id="mpIr" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ej.: D7, 2I10 o PC"></label>
     <div id="mpDeps" class="wrap" style="flex-direction:row;flex-wrap:wrap;gap:6px"></div>
     <div id="mpRes" class="nota"></div>
+    <div id="mpLey" class="nota" style="color:#d92d20;font-weight:700" hidden></div>
     <div id="mpMapa" class="mapa"></div>
     <div id="mpOtros" class="nota"></div>
     <div id="mpAyuda" class="nota">Azul: módulo con libros ubicados (el número es la cantidad de libros). Tocá un módulo para ver sus niveles y libros · Enter en el cuadro abre el módulo · Esc cierra</div>
@@ -1012,7 +1015,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('fDep11').textContent = 'Dep 11: ' + S.d11[sel];
     $('fPvp').textContent = S.pvp[sel] ? 'PVP ' + pesos(S.pvp[sel]) : '';
     $('fCod').textContent = S.cod[sel];
-    var ub = ubicDe(sel); $('fUbic').textContent = ub ? '📍 ' + ub : '📍';
+    var ub = ubicDe(sel); $('fUbic').textContent = ub ? '📍 ' + ub : '📍'; $('fMapaUb').hidden = !(ub && moduloDe(ub));
     $('bMenos').disabled = d + pend <= 0;
   }
   function editarCant(ini) {
@@ -1762,7 +1765,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); ueAtras(); }
   });
   /* ---------- mapa del depósito ---------- */
-  var MP = { dep: '' };                                                                      // depósito que se está viendo
+  var MP = { dep: '', res: '' };                                                                      // depósito que se está viendo
   var MP_FILAS = { 10: 1, 9: 2, 8: 3, 7: 5, 6: 6, 5: 7, 4: 8, 3: 10, 2: 11, 1: 12 };       // número de módulo -> fila de la grilla
   var MP_COLS = { A: 1, B: 3, C: 4, D: 6, E: 7, F: 9, G: 10 };                              // letra de fila de estantes -> columna
   var MP_MODS = (function () {                                                               // el plano del depósito 1 (los módulos se llaman 1A-9, 1B-10…)
@@ -1802,15 +1805,16 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function mpBoton(id, d, clase) {
     var b = document.createElement('button'); b.type = 'button';
-    b.className = 'mod' + clase + (d ? ' on' : '');
+    b.className = 'mod' + clase + (d ? ' on' : '') + (id === MP.res ? ' sel' : '');
     b.setAttribute('aria-label', id + (d ? ': ' + d.libros + ' libros en ' + Object.keys(d.niveles).length + ' niveles' : ': sin libros ubicados'));
     b.innerHTML = '<span class="in"><b></b><small></small></span>';
     b.querySelector('b').textContent = id.replace(/^\d(?=[A-Z])/, ''); b.querySelector('small').textContent = d ? d.libros : '';
     b.addEventListener('click', function () { mpAbrirModulo(id); });
     return b;
   }
-  function mpAbrir() {
+  function mpAbrir(res) {                                         // res: módulo a pintar en rojo (el del libro que se está mirando); sin eso, el mapa de siempre
     if (!S) { toast('Todavía no hay datos cargados'); return; }
+    if (typeof res === 'string') { MP.res = res; if (res) MP.dep = depDe(res); } 
     var c = mpContar();
     var depsLista = Object.keys(MP_PLANO).concat(Object.keys(c.deps)).filter(function (d, i, a) { return a.indexOf(d) === i; }).sort();   // los que tienen plano + los que ya tienen libros
     if (!MP.dep) MP.dep = depsLista.slice().sort(function (a, b) { return (c.deps[b] || 0) - (c.deps[a] || 0); })[0] || '1';
@@ -1867,6 +1871,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       if (!con) { var v0 = document.createElement('div'); v0.className = 'nota'; v0.textContent = 'Todavía no hay libros ubicados en el depósito ' + MP.dep + '.'; mapa.appendChild(v0); }
       $('mpRes').textContent = con + (con === 1 ? ' módulo' : ' módulos') + ' con libros ubicados' + (adm ? ' · todavía no hay plano del depósito ' + MP.dep : '');
     }
+    var ley = $('mpLey'); if (ley) { ley.hidden = !MP.res; ley.textContent = MP.res ? 'En rojo: ' + (sel >= 0 ? ubicDe(sel) : MP.res) + ' (módulo ' + MP.res.replace(/^\d(?=[A-Z])/, '') + ')' : ''; }
     var n = Object.keys(c.otros.nombres).length;
     var o = $('mpOtros'); o.innerHTML = ''; o.hidden = !(n && adm); $('mpAyuda').hidden = !adm;
     if (n && adm) {
@@ -1883,7 +1888,13 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function cerrarMp() { $('mpPanel').hidden = true; }
   function mpAtras() { if ($('mpPanel').hidden) return false; cerrarMp(); return true; }
-  $('btnMapa').addEventListener('click', mpAbrir);
+  $('btnMapa').addEventListener('click', function () { mpAbrir(''); });
+  $('fMapaUb').addEventListener('click', function () {
+    var ub = sel >= 0 ? ubicDe(sel) : '', m = ub ? moduloDe(ub) : '';
+    if (!m) { toast('Esa ubicación no está en el plano'); return; }
+    mpAbrir(m);
+    if (!MP_IDS[m]) toast(ub + ': el depósito ' + (depDe(m) || '1') + ' todavía no tiene plano');
+  });
   $('mpCerrar').addEventListener('click', cerrarMp);
   $('mpIr').addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarMp(); }
@@ -2137,7 +2148,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     PEDIDOS.forEach(function (q) {
       if (!q.ackPend || q.mio || q.obs) return;
       var hechos = q.items.filter(function (x) { return q.hechos && q.hechos[x[0]]; }).length;
-      var cerrado = pedCompleto(q) ? (q.cerrado || Date.now()) : 0;
+      var cerrado = pedCerrado(q) ? (q.cerrado || Date.now()) : 0;
       q.cerrado = cerrado;
       var cuerpo = { n: CFG.nombre, rec: q.rec || q.t, hechos: hechos, total: q.items.length, cerrado: cerrado, t: Date.now() };
       q.ackPend = false;
@@ -2167,6 +2178,19 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       });
     });
   }
+  function bajarCierres() {                         // administrador: qué pedidos de otros teléfonos ya cerraron (aunque falten libros)
+    if (!nubeOn() || nivel() !== 'admin') return Promise.resolve();
+    var obs = PEDIDOS.filter(function (q) { return q.obs; });
+    if (!obs.length) return Promise.resolve();
+    return fetch(nubeBase() + '/pedacks.json').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }).then(function (d) {
+      d = d || {}; var cambio = false;
+      obs.forEach(function (q) {
+        var a = d[q.id] && d[q.id][normNombre(q.para)], c = (a && a.cerrado) || 0, nuevo = !!c && !pedCompleto(q);
+        if (!!q.cierre !== nuevo || (nuevo && q.cerrado !== c)) { q.cierre = nuevo; q.cerrado = nuevo ? c : 0; cambio = true; }
+      });
+      if (cambio) { guardarPedidos(); if ($('vistaPedidos') && !$('vistaPedidos').hidden) { var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); } }
+    }).catch(function () {});
+  }
   function bajarHechos() {
     if (!nubeOn() || !PEDIDOS.length) return Promise.resolve();
     subirHechos();
@@ -2192,10 +2216,11 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   setInterval(function () { if (!document.hidden && $('vistaPedidos') && !$('vistaPedidos').hidden && PEDABIERTO) bajarHechos(); }, 4000);
   function guardarPedidos() { PEDIDOS = PEDIDOS.slice(-150); guardar('pedidos', PEDIDOS); contarPedidos(); }
   function contarPedidos() {
-    var n = PEDIDOS.filter(function (p) { return !p.mio && !p.obs && !pedCompleto(p); }).length;
+    var n = PEDIDOS.filter(function (p) { return !p.mio && !p.obs && !pedCerrado(p); }).length;
     $('nPed').textContent = n ? '(' + n + ')' : '';
   }
   function pedCompleto(p) { return p.items.length && p.items.every(function (x) { return p.hechos && p.hechos[x[0]]; }); }
+  function pedCerrado(p) { return !!(pedCompleto(p) || p.cierre); }          // cerrado: completo, o cerrado a mano aunque falten libros
   function agregarPedido(m, mio) {                    // true si era nuevo
     var id = m.id || ('p' + Date.now().toString(36));
     if (PEDBORR[id] || PEDIDOS.some(function (p) { return p.id === id; })) return false;
@@ -2225,9 +2250,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       var caja = document.createElement('div'); caja.className = 'lista';
       var adm = nivel() === 'admin', visibles = PEDIDOS.filter(function (q) { return adm || !q.obs; });
       if (adm) {                                                  // el administrador ve todos los pedidos y cómo avanzan
-        var enCurso = visibles.filter(function (q) { return !pedCompleto(q); }).length;
+        var enCurso = visibles.filter(function (q) { return !pedCerrado(q); }).length;
         var rs = document.createElement('div'); rs.className = 'nota'; rs.style.margin = '0 0 8px';
-        rs.textContent = visibles.length + (visibles.length === 1 ? ' pedido' : ' pedidos') + ' · ' + enCurso + ' en curso · ' + (visibles.length - enCurso) + ' completos';
+        rs.textContent = visibles.length + (visibles.length === 1 ? ' pedido' : ' pedidos') + ' · ' + enCurso + ' en curso · ' + (visibles.length - enCurso) + ' cerrados';
         c.appendChild(rs);
       }
       visibles.slice().reverse().forEach(function (q) {
@@ -2240,7 +2265,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var m = document.createElement('div'); m.className = 'm';
         m.textContent = fechaCorta(q.t) + (q.mio ? ' · enviado' + (q.para ? ' a ' + q.para : '') : q.obs ? ' · para ' + (q.para || '?') + (q.de ? ' · de ' + q.de : '') : q.de ? ' · de ' + q.de : ' · de la PC') + ' · separados ' + hechos + ' de ' + q.items.length + (q.obs && q.items.length ? ' (' + Math.round(100 * hechos / q.items.length) + '%)' : '');
         t.appendChild(a); t.appendChild(m); f.appendChild(t);
-        var d2 = document.createElement('div'); d2.className = 'd'; d2.textContent = pedCompleto(q) ? '✓' : ''; f.appendChild(d2);
+        var d2 = document.createElement('div'); d2.className = 'd'; d2.textContent = pedCompleto(q) ? '✓' : q.cierre ? 'Cerrado' : ''; f.appendChild(d2);
         f.addEventListener('click', function () { PEDABIERTO = q.id; pintarPedidos(); window.scrollTo({ top: 0 }); });
         caja.appendChild(f);
       });
@@ -2255,7 +2280,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var tb2 = document.createElement('b');
     tb2.textContent = (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot2 + (tot2 === 1 ? ' ejemplar' : ' ejemplares');
     var sub = document.createElement('span'); sub.className = 'sub';
-    sub.textContent = (p.obs ? 'Para ' + (p.para || '?') + (p.de ? ' · de ' + p.de : '') + ' · solo lectura · ' : '') + 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares';
+    sub.textContent = (p.cierre ? 'Cerrado' + (p.cerrado ? ' ' + fechaCorta(p.cerrado) : '') + ' · ' : '') + (p.obs ? 'Para ' + (p.para || '?') + (p.de ? ' · de ' + p.de : '') + ' · solo lectura · ' : '') + 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares';
     tb2.appendChild(sub);
     cab.appendChild(bt); cab.appendChild(tb2); c.appendChild(cab);
     var lista = document.createElement('div'); lista.className = 'lista';
@@ -2283,6 +2308,21 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       lista.appendChild(f);
     });
     c.appendChild(lista);
+    if (!p.obs) {
+      var cer = document.createElement('button'); cer.type = 'button'; cer.className = 'btn ancho'; cer.style.marginTop = '12px';
+      var faltan = p.items.length - hechos2;
+      cer.textContent = pedCompleto(p) ? '✓ Pedido completo' : p.cierre ? 'Reabrir el pedido' : 'Cerrar el pedido' + (faltan ? ' (faltan ' + faltan + (faltan === 1 ? ' libro' : ' libros') + ')' : '');
+      cer.disabled = !!pedCompleto(p);
+      cer.addEventListener('click', function () {
+        if (p.cierre) { p.cierre = false; p.cerrado = 0; toast('Pedido reabierto'); }
+        else {
+          if (faltan && !confirm('Faltan ' + faltan + (faltan === 1 ? ' libro' : ' libros') + ' por separar. ¿Cerrar el pedido igual? Se le avisa a la PC.')) return;
+          p.cierre = true; p.cerrado = Date.now(); toast('✓ Pedido cerrado');
+        }
+        p.ackPend = true; guardarPedidos(); enviarAcks(); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y });
+      });
+      c.appendChild(cer);
+    }
     var del = document.createElement('button'); del.type = 'button'; del.className = 'btn ancho'; del.style.marginTop = '12px'; del.textContent = 'Borrar este pedido';
     del.addEventListener('click', function () {
       if (!confirm('¿Borrar este pedido de este teléfono?')) return;
@@ -2336,7 +2376,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         if (m.texto) { m.id = id; if (m.pedido) agregarPedido(m, false); MSGQ.push(m); }
       });
       MSGINI = true; guardarMsgV(); mostrarMsg();
-    }).then(function () { return bajarHechos(); }).catch(function () {});
+    }).then(function () { return bajarHechos(); }).then(bajarCierres).catch(function () {});
   }
   setInterval(bajarMsgs, 12000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) bajarMsgs(); });
@@ -2860,7 +2900,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }
     if (k === '/') { enfocarBuscar(); e.preventDefault(); return; }
     if ((k === 'e' || k === 'E') && t !== 'BUTTON') { ueAbrir(); e.preventDefault(); return; }
-    if ((k === 'm' || k === 'M') && t !== 'BUTTON') { mpAbrir(); e.preventDefault(); return; }
+    if ((k === 'm' || k === 'M') && t !== 'BUTTON') { mpAbrir(''); e.preventDefault(); return; }
     if (k === '?') { toast('↑ ↓ moverse · / buscar · A autor · E estantes · M mapa · S con stock · H movimientos · Espacio tapa · Enter tapa (consulta) · + − Ok · Esc borra búsqueda y filtros'); e.preventDefault(); return; }
     if (k === 'Escape') { limpiarTodo(); enfocarBuscar(); e.preventDefault(); return; }       // Esc: borra la búsqueda y los filtros, y queda listo para escribir
     if ((k === 'h' || k === 'H') && sel >= 0) { abrirHist(); e.preventDefault(); return; }
