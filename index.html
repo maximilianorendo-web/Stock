@@ -217,6 +217,11 @@ body.consulta #fDep { pointer-events: none; }
 #msgOk { width: 100%; background: transparent; color: var(--hdr-ink); border-color: rgba(255,255,255,.4); }
 #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--hdr); color: var(--hdr-ink); padding: 12px 18px; border-radius: 12px; font-weight: 600; max-width: calc(100% - 32px); z-index: 20; box-shadow: 0 4px 16px rgba(0,0,0,.3); }
 #scan { position: fixed; inset: 0; background: #000; z-index: 30; display: flex; flex-direction: column; }
+#barPanel { position: fixed; inset: 0; background: #000; z-index: 45; display: flex; flex-direction: column; }
+#barPanel video { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
+#barPanel .barra { padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); color: #fff; display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #111; }
+#barAviso { position: absolute; top: 12px; left: 12px; right: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(0,0,0,.65); color: #fff; font-size: 15px; text-align: center; }
+#barAviso.mal { background: rgba(190,40,40,.85); }
 #scan video { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
 #scan .barra { padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); color: #fff; display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #111; }
 
@@ -454,6 +459,12 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
       <button class="btn" id="foCerrar" type="button">Cerrar</button>
     </div>
   </div>
+</div>
+
+<div id="barPanel" hidden>
+  <video id="barVideo" playsinline muted></video>
+  <div id="barAviso">Pasá la cámara despacio, de izquierda a derecha</div>
+  <div class="barra"><span id="barCont">0 cuadros</span><button class="btn" id="barCancel" type="button">Cancelar</button><button class="btn pri" id="barListo" type="button">Listo</button></div>
 </div>
 
 <div id="histPanel" class="panel" hidden>
@@ -786,7 +797,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var e = $('toast'); e.textContent = t; e.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 2600);
   }
-  var VERSION = 'v84';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
+  var VERSION = 'v85';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
   function estado() {
     var e = $('estado');
     var sub = MOV.filter(function (m) { return !m.subido && !m.ajeno; }).length;
@@ -2030,6 +2041,118 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       }
     });
   }
+  /* ---------- barrido: se pasa la cámara por el estante y Aleph se queda con un cuadro nítido por cada tramo nuevo ---------- */
+  var BAR = null, BARMAX = 40;
+  function barAviso(t, mal) { var a = $('barAviso'); a.textContent = t; a.className = mal ? 'mal' : ''; }
+  function barGris(cv, w, h) {
+    var d = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data, g = new Float32Array(w * h), m = 0;
+    for (var i = 0, j = 0; i < g.length; i++, j += 4) { g[i] = (d[j] * 77 + d[j + 1] * 151 + d[j + 2] * 28) >> 8; m += g[i]; }
+    m /= g.length; for (i = 0; i < g.length; i++) g[i] -= m;
+    return g;
+  }
+  function barNitidez(g, w, h) {                     // varianza del laplaciano: más alta = más enfocado
+    var s = 0, n = 0;
+    for (var y = 1; y < h - 1; y += 2) for (var x = 1; x < w - 1; x += 2) { var i = y * w + x, l = 4 * g[i] - g[i - 1] - g[i + 1] - g[i - w] - g[i + w]; s += l * l; n++; }
+    return n ? s / n : 0;
+  }
+  function barReducir(g, w, h) {                     // a la mitad, para comparar tramos
+    var w2 = w >> 1, h2 = h >> 1, o = new Float32Array(w2 * h2);
+    for (var y = 0; y < h2; y++) for (var x = 0; x < w2; x++) o[y * w2 + x] = (g[2 * y * w + 2 * x] + g[2 * y * w + 2 * x + 1] + g[(2 * y + 1) * w + 2 * x] + g[(2 * y + 1) * w + 2 * x + 1]) / 4;
+    return { g: o, w: w2, h: h2 };
+  }
+  function barDesplazo(a, b) {                       // cuánto se corrió la imagen hacia los costados: {dx, err}; err alto = no se parecen
+    var w = a.w, h = a.h, mejor = 1e18, dxm = 0, base = 0, i;
+    for (i = 0; i < a.g.length; i += 3) base += Math.abs(a.g[i]);
+    base = base / Math.ceil(a.g.length / 3) + 1e-6;
+    for (var dx = -Math.round(w * 0.75); dx <= Math.round(w * 0.75); dx += 2) {
+      var e = 0, c = 0, x0 = Math.max(0, -dx), x1 = Math.min(w, w - dx);
+      for (var y = 0; y < h; y += 2) for (var x = x0; x < x1; x += 2) { e += Math.abs(a.g[y * w + x] - b.g[y * w + x + dx]); c++; }
+      e = c ? e / c : 1e18; if (e < mejor) { mejor = e; dxm = dx; }
+    }
+    return { dx: dxm, err: mejor / base, w: w };
+  }
+  function abrirBarrido(fila) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } }).then(function (s) {
+      var v = $('barVideo');
+      BAR = { fila: fila, stream: s, frames: [], ref: null, cand: null, t0: Date.now(), quieto: 0, sprev: 0, perdido: 0, max: 0, cola: Promise.resolve(),
+        cv: document.createElement('canvas'), full: document.createElement('canvas'), cand0: document.createElement('canvas') };
+      v.srcObject = s; $('barPanel').hidden = false; v.play(); $('barCont').textContent = '0 cuadros'; barAviso('Pasá la cámara despacio, de izquierda a derecha');
+      BAR.timer = setInterval(barPaso, 140);
+    }).catch(function () { toast('No tengo permiso para usar la cámara'); });
+  }
+  function barGuardar() {                            // el mejor cuadro del tramo pasa a ser una foto
+    var B = BAR, c = B.cand; if (!c) return;
+    var k = Math.min(1, 2400 / Math.max(c.cv.width, c.cv.height)), out = document.createElement('canvas');
+    out.width = Math.round(c.cv.width * k); out.height = Math.round(c.cv.height * k); out.getContext('2d').drawImage(c.cv, 0, 0, out.width, out.height);
+    B.ref = c.peq; B.cand = null; B.quieto = 0; B.sprev = 0;
+    B.cola = B.cola.then(function () {
+      return new Promise(function (ok) {
+        out.toBlob(function (b) {
+          if (!b) { ok(); return; }
+          var fr = new FileReader();
+          fr.onload = function () { B.frames.push({ img: String(fr.result).split(',')[1], w: out.width, h: out.height, url: URL.createObjectURL(b) }); ok(); };
+          fr.onerror = function () { ok(); }; fr.readAsDataURL(b);
+        }, 'image/jpeg', 0.82);
+      });
+    });
+    B.n = (B.n || 0) + 1; $('barCont').textContent = B.n + (B.n === 1 ? ' cuadro' : ' cuadros'); pitar(true);
+    if (B.n >= BARMAX) { barAviso('Llegaste al máximo de ' + BARMAX + ' cuadros', true); terminarBarrido(true); }
+  }
+  function barPaso() {
+    var B = BAR, v = $('barVideo'); if (!B || B.busy || !v.videoWidth) return;
+    var W = 320, H = Math.max(40, Math.round(W * v.videoHeight / v.videoWidth));
+    B.cv.width = W; B.cv.height = H; B.cv.getContext('2d').drawImage(v, 0, 0, W, H);
+    var g = barGris(B.cv, W, H), nit = barNitidez(g, W, H), peq = barReducir(g, W, H);
+    B.max = Math.max(B.max * 0.98, nit);
+    function mejorar(s) {                            // si este cuadro es más nítido que el guardado del tramo, lo reemplaza
+      if (!B.cand || nit > B.cand.nit) {
+        B.full.width = v.videoWidth; B.full.height = v.videoHeight; B.full.getContext('2d').drawImage(v, 0, 0);
+        var c2 = document.createElement('canvas'); c2.width = B.full.width; c2.height = B.full.height; c2.getContext('2d').drawImage(B.full, 0, 0);
+        B.cand = { cv: c2, nit: nit, peq: peq, s: s };
+      }
+    }
+    if (!B.ref) {                                    // el primer cuadro: el más nítido del primer segundo
+      mejorar(0); barAviso('Quedate quieto un segundo…');
+      if (Date.now() - B.t0 > 1000) { barGuardar(); barAviso('Ahora pasá despacio, de izquierda a derecha'); }
+      return;
+    }
+    var ant = B.ant; B.ant = peq;
+    if (ant) {                                       // velocidad entre dos lecturas seguidas: si pasa mucho de una a otra, sale movido y se confunde un libro con otro
+      var vel = Math.abs(barDesplazo(ant, peq).dx) / peq.w;
+      if (vel > 0.15) { B.rapido = 4; }
+    }
+    if (B.rapido > 0) { B.rapido--; barAviso('Muy rápido: andá más despacio', true); return; }
+    var e = barDesplazo(B.ref, peq);
+    if (e.err > 0.7) {                               // ya no se parece al último cuadro guardado: se movió demasiado rápido
+      B.perdido++; if (B.perdido >= 3) barAviso('Muy rápido: volvé un poco atrás y andá más despacio', true); return;
+    }
+    B.perdido = 0;
+    var s = Math.abs(e.dx) / e.w;
+    if (s >= 0.4) {
+      mejorar(s);
+      B.quieto = Math.abs(s - B.sprev) < 0.02 ? B.quieto + 1 : 0; B.sprev = s;
+      if (s >= 0.6 || B.quieto >= 5) barGuardar();
+    } else { B.sprev = s; }
+    if (B.max && nit < B.max * 0.3) barAviso('Imagen movida: más despacio', true);
+    else if (!$('barAviso').className || nit >= B.max * 0.5) barAviso('Seguí pasando despacio…');
+  }
+  function pararBarrido() {
+    var B = BAR; if (!B) return null;
+    clearInterval(B.timer); try { B.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+    $('barVideo').srcObject = null; $('barPanel').hidden = true; BAR = null; return B;
+  }
+  function cancelarBarrido() { var B = pararBarrido(); if (B) B.cola.then(function () { B.frames.forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); }); }
+  function terminarBarrido() {
+    var B = BAR; if (!B) return; if (B.cand && B.n) { var c = B.cand; if (c.s >= 0.25) barGuardar(); }   // el último tramo, si ya avanzó algo
+    pararBarrido();
+    B.cola.then(function () {
+      if (!B.frames.length) { toast('No se tomó ningún cuadro'); return; }
+      FOTOSEL[B.fila] = (FOTOSEL[B.fila] || []).concat(B.frames); pintarFotoMini(); pintarFotoEstado();
+      toast('Barrido: ' + B.frames.length + (B.frames.length === 1 ? ' foto' : ' fotos'));
+    });
+  }
+  $('barCancel').addEventListener('click', cancelarBarrido);
+  $('barListo').addEventListener('click', terminarBarrido);
   var FOFILAS = 7, FOFILA = 0;
   var CAMARA = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.5h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.2" r="3.6"/></svg>';
   function pintarFotoMini() {
@@ -2044,7 +2167,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); bt.click(); } });
         var qx = document.createElement('button'); qx.type = 'button'; qx.className = 'btn chico'; qx.id = 'foX' + i; qx.textContent = '×'; qx.hidden = true; qx.setAttribute('aria-label', 'Sacar las fotos de la fila ' + (i + 1));
         qx.addEventListener('click', function () { (FOTOSEL[i] || []).forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); FOTOSEL[i] = []; pintarFotoMini(); });
-        d.appendChild(inp); d.appendChild(bt); d.appendChild(n); d.appendChild(qx); c.appendChild(d);
+        var bb = document.createElement('button'); bb.type = 'button'; bb.className = 'fcam'; bb.textContent = '↔'; bb.hidden = !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        bb.title = 'Barrer el estante con la cámara'; bb.setAttribute('aria-label', 'Barrer la fila ' + (i + 1) + ' con la cámara');
+        bb.addEventListener('click', function () { abrirBarrido(i); });
+        d.appendChild(inp); d.appendChild(bt); d.appendChild(bb); d.appendChild(n); d.appendChild(qx); c.appendChild(d);
       })(i);
     }
     for (var k = 0; k < FOFILAS; k++) {
@@ -2838,7 +2964,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey || !S) return;
     var enScan = !$('scan').hidden;                                       // con el panel de la cámara abierto el lector hace lo mismo que la cámara
-    if (!$('ediPanel').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || (!enScan && $('vistaBuscar').hidden)) { LEC.buf = ''; return; }
+    if (!$('ediPanel').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('barPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || (!enScan && $('vistaBuscar').hidden)) { LEC.buf = ''; return; }
     var tg = e.target, tag = tg && tg.tagName;
     if ((tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') && tg.id !== 'q' && tg.id !== 'fIn') { LEC.buf = ''; return; }
     var ahora = e.timeStamp, k = e.key;                                   // la hora en que se apretó la tecla (no la en que la página llegó a atenderla: si va cargada, se atrasa)
@@ -2985,7 +3111,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function enfocarBuscar() { setTimeout(function () { var q = $('q'); q.focus(); q.select(); }, 0); }   // después del evento: así la tecla no se escribe en el cuadro
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.altKey || e.metaKey) return;
-    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || $('vistaBuscar').hidden) return;
+    if (!$('ediPanel').hidden || !$('scan').hidden || !$('revPanel').hidden || !$('fotoPanel').hidden || !$('barPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('admPanel').hidden || !$('histPanel').hidden || $('vistaBuscar').hidden) return;
     var t = e.target && e.target.tagName, enQ = e.target && e.target.id === 'q', k = e.key;
     if (e.ctrlKey && (k === 'k' || k === 'K')) { enfocarBuscar(); e.preventDefault(); return; }
     if (e.ctrlKey) return;
@@ -3177,6 +3303,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function atras() {                       // true si había algo para cerrar
     if (!$('admPanel').hidden) { cerrarAdmin(); return true; }
     if (!$('histPanel').hidden) { cerrarHist(); return true; }
+    if (!$('barPanel').hidden) { cancelarBarrido(); return true; }
     if (!$('fotoPanel').hidden) { cerrarFoto(); return true; }
     if (!$('ubPanel').hidden) { cerrarUb(); return true; }
     if (!$('mpPanel').hidden) { cerrarMp(); return true; }
@@ -3194,7 +3321,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   /* flechita arriba a la izquierda y deslizar hacia la derecha: en iPhone (app instalada) no hay botón ni gesto de volver */
   function hayAtras() {
-    return !$('admPanel').hidden || !$('histPanel').hidden || !$('fotoPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('revPanel').hidden ||
+    return !$('admPanel').hidden || !$('histPanel').hidden || !$('fotoPanel').hidden || !$('barPanel').hidden || !$('tapaPanel').hidden || !$('ubPanel').hidden || !$('uePanel').hidden || !$('mpPanel').hidden || !$('revPanel').hidden ||
       !$('scan').hidden || !$('ediPanel').hidden || (!$('vistaPedidos').hidden && !!PEDABIERTO) || $('vistaBuscar').hidden ||
       sel >= 0 || !!$('q').value || hayFiltro();
   }
