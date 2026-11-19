@@ -220,6 +220,12 @@ body.consulta #fDep { pointer-events: none; }
 #barPanel { position: fixed; inset: 0; background: #000; z-index: 45; display: flex; flex-direction: column; }
 #barPanel video { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
 #barPanel .barra { padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); color: #fff; display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #111; }
+#barPanel .barra { flex-wrap: wrap; }
+.bmodos { display: flex; gap: 4px; background: #333; border-radius: 10px; padding: 3px; }
+.bmodos button { appearance: none; border: 0; background: transparent; color: #ddd; font: inherit; font-size: 14px; font-weight: 600; padding: 7px 12px; border-radius: 8px; }
+.bmodos button[aria-pressed="true"] { background: #fff; color: #111; }
+#barDisp { position: absolute; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: 74px; height: 74px; border-radius: 50%; border: 4px solid #fff; background: rgba(255,255,255,.35); }
+#barDisp:active { background: rgba(255,255,255,.8); }
 #barAviso { position: absolute; top: 12px; left: 12px; right: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(0,0,0,.65); color: #fff; font-size: 15px; text-align: center; }
 #barAviso.mal { background: rgba(190,40,40,.85); }
 #scan video { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
@@ -464,7 +470,11 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
 <div id="barPanel" hidden>
   <video id="barVideo" playsinline muted></video>
   <div id="barAviso">Pasá la cámara despacio, de izquierda a derecha</div>
-  <div class="barra"><span id="barCont">0 cuadros</span><button class="btn" id="barCancel" type="button">Cancelar</button><button class="btn pri" id="barListo" type="button">Listo</button></div>
+  <button id="barDisp" type="button" aria-label="Sacar foto"></button>
+  <div class="barra">
+    <div class="bmodos"><button type="button" id="barMFoto" aria-pressed="true">Fotos</button><button type="button" id="barMBar" aria-pressed="false">Barrido</button></div>
+    <span id="barCont">0 fotos</span><button class="btn" id="barCancel" type="button">Cancelar</button><button class="btn pri" id="barListo" type="button">Listo</button>
+  </div>
 </div>
 
 <div id="histPanel" class="panel" hidden>
@@ -797,7 +807,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var e = $('toast'); e.textContent = t; e.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 2600);
   }
-  var VERSION = 'v85';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
+  var VERSION = 'v86';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
   function estado() {
     var e = $('estado');
     var sub = MOV.filter(function (m) { return !m.subido && !m.ajeno; }).length;
@@ -2071,15 +2081,43 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     }
     return { dx: dxm, err: mejor / base, w: w };
   }
-  function abrirBarrido(fila) {
+  function abrirBarrido(fila, modo) {
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } }).then(function (s) {
       var v = $('barVideo');
       BAR = { fila: fila, stream: s, frames: [], ref: null, cand: null, t0: Date.now(), quieto: 0, sprev: 0, perdido: 0, max: 0, cola: Promise.resolve(),
         cv: document.createElement('canvas'), full: document.createElement('canvas'), cand0: document.createElement('canvas') };
-      v.srcObject = s; $('barPanel').hidden = false; v.play(); $('barCont').textContent = '0 cuadros'; barAviso('Pasá la cámara despacio, de izquierda a derecha');
-      BAR.timer = setInterval(barPaso, 140);
+      v.srcObject = s; $('barPanel').hidden = false; v.play(); $('barCont').textContent = '0 fotos'; BAR.modo = '';
+      barModo(modo === 'barrido' ? 'barrido' : 'foto');
     }).catch(function () { toast('No tengo permiso para usar la cámara'); });
   }
+  function barModo(m) {
+    var B = BAR; if (!B || B.modo === m) return;
+    B.modo = m; clearInterval(B.timer); B.timer = 0;
+    $('barMFoto').setAttribute('aria-pressed', m === 'foto'); $('barMBar').setAttribute('aria-pressed', m === 'barrido'); $('barDisp').hidden = m !== 'foto';
+    B.ref = null; B.cand = null; B.ant = null; B.quieto = 0; B.sprev = 0; B.perdido = 0; B.rapido = 0; B.t0 = Date.now();
+    if (m === 'barrido') { barAviso('Pasá la cámara despacio, de izquierda a derecha'); B.timer = setInterval(barPaso, 140); }
+    else barAviso('Tocá el círculo para sacar cada foto', false);
+  }
+  function barDisparo() {                            // una foto suelta con la cámara de Aleph
+    var B = BAR, v = $('barVideo'); if (!B || B.modo !== 'foto' || !v.videoWidth) return;
+    var k = Math.min(1, 2400 / Math.max(v.videoWidth, v.videoHeight)), out = document.createElement('canvas');
+    out.width = Math.round(v.videoWidth * k); out.height = Math.round(v.videoHeight * k); out.getContext('2d').drawImage(v, 0, 0, out.width, out.height);
+    B.n = (B.n || 0) + 1; $('barCont').textContent = B.n + (B.n === 1 ? ' foto' : ' fotos'); pitar(true);
+    B.cola = B.cola.then(function () {
+      return new Promise(function (ok) {
+        out.toBlob(function (b) {
+          if (!b) { ok(); return; }
+          var fr = new FileReader();
+          fr.onload = function () { B.frames.push({ img: String(fr.result).split(',')[1], w: out.width, h: out.height, url: URL.createObjectURL(b) }); ok(); };
+          fr.onerror = function () { ok(); }; fr.readAsDataURL(b);
+        }, 'image/jpeg', 0.82);
+      });
+    });
+    if (B.n >= BARMAX) terminarBarrido();
+  }
+  $('barDisp').addEventListener('click', barDisparo);
+  $('barMFoto').addEventListener('click', function () { barModo('foto'); });
+  $('barMBar').addEventListener('click', function () { barModo('barrido'); });
   function barGuardar() {                            // el mejor cuadro del tramo pasa a ser una foto
     var B = BAR, c = B.cand; if (!c) return;
     var k = Math.min(1, 2400 / Math.max(c.cv.width, c.cv.height)), out = document.createElement('canvas');
@@ -2095,7 +2133,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         }, 'image/jpeg', 0.82);
       });
     });
-    B.n = (B.n || 0) + 1; $('barCont').textContent = B.n + (B.n === 1 ? ' cuadro' : ' cuadros'); pitar(true);
+    B.n = (B.n || 0) + 1; $('barCont').textContent = B.n + (B.n === 1 ? ' foto' : ' fotos'); pitar(true);
     if (B.n >= BARMAX) { barAviso('Llegaste al máximo de ' + BARMAX + ' cuadros', true); terminarBarrido(true); }
   }
   function barPaso() {
@@ -2138,12 +2176,12 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   function pararBarrido() {
     var B = BAR; if (!B) return null;
-    clearInterval(B.timer); try { B.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+    if (B.timer) clearInterval(B.timer); try { B.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
     $('barVideo').srcObject = null; $('barPanel').hidden = true; BAR = null; return B;
   }
   function cancelarBarrido() { var B = pararBarrido(); if (B) B.cola.then(function () { B.frames.forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); }); }
   function terminarBarrido() {
-    var B = BAR; if (!B) return; if (B.cand && B.n) { var c = B.cand; if (c.s >= 0.25) barGuardar(); }   // el último tramo, si ya avanzó algo
+    var B = BAR; if (!B) return; if (B.modo === 'barrido' && B.cand && B.n) { var c = B.cand; if (c.s >= 0.25) barGuardar(); }   // el último tramo, si ya avanzó algo
     pararBarrido();
     B.cola.then(function () {
       if (!B.frames.length) { toast('No se tomó ningún cuadro'); return; }
@@ -2153,23 +2191,23 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   $('barCancel').addEventListener('click', cancelarBarrido);
   $('barListo').addEventListener('click', terminarBarrido);
-  var FOFILAS = 7, FOFILA = 0;
+  var FOFILAS = 7, FOFILA = 0, FOLETRAS = ['1', '2', '3', '4', '5', '6', '0'];   // los estantes se numeran de arriba hacia abajo, con 0 el último
   var CAMARA = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.5h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.2" r="3.6"/></svg>';
   function pintarFotoMini() {
     var c = $('foFilas');
     if (!c.children.length) {
       for (var i = 0; i < FOFILAS; i++) (function (i) {
         var d = document.createElement('div'); d.className = 'fofila';
-        var inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 3; inp.placeholder = String.fromCharCode(65 + i); inp.autocapitalize = 'characters'; inp.autocomplete = 'off'; inp.setAttribute('aria-label', 'Letra ' + (i + 1));
+        var inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 3; inp.placeholder = FOLETRAS[i]; inp.value = FOLETRAS[i]; inp.autocapitalize = 'characters'; inp.autocomplete = 'off'; inp.setAttribute('aria-label', 'Letra ' + (i + 1));
         var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'fcam'; bt.innerHTML = CAMARA; bt.setAttribute('aria-label', 'Fotos de la fila ' + (i + 1));
         var n = document.createElement('span'); n.className = 'fcnt'; n.id = 'foN' + i;
-        bt.addEventListener('click', function () { FOFILA = i; $('foArchivo').click(); });
+        bt.addEventListener('click', function () { FOFILA = i; if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) abrirBarrido(i, 'foto'); else $('foArchivo').click(); });
         inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); bt.click(); } });
         var qx = document.createElement('button'); qx.type = 'button'; qx.className = 'btn chico'; qx.id = 'foX' + i; qx.textContent = '×'; qx.hidden = true; qx.setAttribute('aria-label', 'Sacar las fotos de la fila ' + (i + 1));
         qx.addEventListener('click', function () { (FOTOSEL[i] || []).forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); FOTOSEL[i] = []; pintarFotoMini(); });
         var bb = document.createElement('button'); bb.type = 'button'; bb.className = 'fcam'; bb.textContent = '↔'; bb.hidden = !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
         bb.title = 'Barrer el estante con la cámara'; bb.setAttribute('aria-label', 'Barrer la fila ' + (i + 1) + ' con la cámara');
-        bb.addEventListener('click', function () { abrirBarrido(i); });
+        bb.addEventListener('click', function () { abrirBarrido(i, 'barrido'); });
         d.appendChild(inp); d.appendChild(bt); d.appendChild(bb); d.appendChild(n); d.appendChild(qx); c.appendChild(d);
       })(i);
     }
@@ -2231,7 +2269,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var set = {};
     if (S) { for (var i = 0; i < S.pos.length && Object.keys(set).length < 300; i++) { var u = ubicDe(i); if (u) set[u] = 1; } }
     Object.keys(set).sort().forEach(function (u) { var o = document.createElement('option'); o.value = u; dl.appendChild(o); });
-    FOTOSEL = []; $('foFilas').querySelectorAll('input').forEach(function (x) { x.value = ''; }); pintarFotoMini(); pintarFotoEstado();
+    FOTOSEL = []; $('foFilas').querySelectorAll('input').forEach(function (x, i) { x.value = FOLETRAS[i] || ''; }); pintarFotoMini(); pintarFotoEstado();
     $('fotoPanel').hidden = false; $('foU').focus();
   }
   function cerrarFoto() { $('fotoPanel').hidden = true; $('foSub').hidden = true; FOTOSEL.forEach(function (fs) { (fs || []).forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); }); FOTOSEL = []; }
