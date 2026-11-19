@@ -781,7 +781,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var e = $('toast'); e.textContent = t; e.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 2600);
   }
-  var VERSION = 'v82';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
+  var VERSION = 'v83';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
   function estado() {
     var e = $('estado');
     var sub = MOV.filter(function (m) { return !m.subido && !m.ajeno; }).length;
@@ -2565,18 +2565,27 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var lector = new Z.MultiFormatReader(); lector.setHints(hints);
     var cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
     return {
+      ocupado: false, vuelta: 0,
       detect: function (video) {
+        var self = this;
         return new Promise(function (ok) {
           var w = video.videoWidth, h = video.videoHeight;
-          if (!w || !h) { ok([]); return; }
-          var e = Math.min(1, 960 / w); cv.width = Math.round(w * e); cv.height = Math.round(h * e);
-          cx.drawImage(video, 0, 0, cv.width, cv.height);
+          if (!w || !h || self.ocupado) { ok([]); return; }
+          self.ocupado = true; self.vuelta++;
+          /* una vuelta mira toda la imagen (achicada) y la otra solo la franja central a tamaño real:
+             en el iPhone el código ocupa poco del cuadro y achicado todo se pierde */
+          var sx = 0, sy = 0, sw = w, sh = h, tope = 960;
+          if (self.vuelta % 2 === 0) { sw = Math.round(w * 0.8); sh = Math.round(h * 0.45); sx = Math.round((w - sw) / 2); sy = Math.round((h - sh) / 2); tope = 1280; }
+          var e = Math.min(1, tope / sw); cv.width = Math.round(sw * e); cv.height = Math.round(sh * e);
+          cx.drawImage(video, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
           var im = cx.getImageData(0, 0, cv.width, cv.height).data, n = cv.width * cv.height, lum = new Uint8ClampedArray(n);
           for (var i = 0, j = 0; i < n; i++, j += 4) lum[i] = (im[j] * 77 + im[j + 1] * 151 + im[j + 2] * 28) >> 8;
+          var res = [];
           try {
             var r = lector.decodeWithState(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.RGBLuminanceSource(lum, cv.width, cv.height))));
-            ok([{ rawValue: r.getText() }]);
-          } catch (err) { ok([]); }
+            res = [{ rawValue: r.getText() }];
+          } catch (err) {}
+          self.ocupado = false; ok(res);
         });
       }
     };
@@ -2607,8 +2616,9 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!S) { toast('Primero cargá el stock'); return; }
     if (!puedeContar()) { sinPermiso(); return; }
     crearDetector(function (det) {
-    if (!det) { toast('Este navegador no puede leer códigos'); return; }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function (s) {
+    if (!det) { toast('No pude cargar el lector de códigos (falta zxing.min.js junto a index.html)'); return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } }).then(function (s) {
+      try { var tk = s.getVideoTracks()[0], cp = tk.getCapabilities ? tk.getCapabilities() : {}; if (cp.focusMode && cp.focusMode.indexOf('continuous') >= 0) tk.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function () {}); } catch (e) {}
       scanStream = s; var v = $('video'); prepararLuz(s); v.srcObject = s; $('scan').hidden = false; v.play();
       ULT = ''; TULT = 0; setModo(MODO);
       scanTimer = setInterval(function () {
