@@ -618,7 +618,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     $('btnSin').setAttribute('aria-pressed', 'false'); $('btnCero').setAttribute('aria-pressed', 'false');
   }
   var sel = -1, pend = 0, res = [], toastT = null;
-  var PEDBORR = {}, PEDIDOS = [], PEDABIERTO = null, PEDVOLVER = null;   // pedidos recibidos/enviados: [{id, t, items:[[cod,cant]], hechos:{cod:1}, de, para, mio}]
+  var PEDBORR = {}, PEDIDOS = [], PEDABIERTO = null, PEDVOLVER = null, PEDRE = null;   // pedidos recibidos/enviados: [{id, t, items:[[cod,cant]], hechos:{cod:1}, de, para, mio}]
   var PAG = 0, PAG_ULT = '', TAM = 15;     // resultados por página
   var CONTEO = {}, ORDEN = [], ULTLIB = null;    // conteo por escáner: código -> {cod, tit, n}
 
@@ -807,7 +807,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var e = $('toast'); e.textContent = t; e.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 2600);
   }
-  var VERSION = 'v86';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
+  var VERSION = 'v88';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
   function estado() {
     var e = $('estado');
     var sub = MOV.filter(function (m) { return !m.subido && !m.ajeno; }).length;
@@ -2288,7 +2288,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     for (var i = 0; i < FOFILAS; i++) {
       var fs = FOTOSEL[i] || []; if (!fs.length) continue;
       var letra = ins[i].value.replace(/\s+/g, '').toUpperCase();
-      var u = cab + letra;
+      var u = cab + (cab && letra && /^\d+$/.test(letra) && !/[-\s]$/.test(cab) ? '-' : '') + letra;   // 2I-6 + 1 → 2I-6-1 (con o sin el guion al final)
       if (!u) { toast('Escribí el encabezado o la letra de la fila ' + (i + 1)); return; }
       lista.push({ u: u, fs: fs });
     }
@@ -2517,7 +2517,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       if (k != null) { var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]); f.appendChild(d); }
       t.addEventListener('click', function () {
         if (k == null) { toast('Ese libro no está en tu stock'); return; }
-        PEDVOLVER = { id: p.id, k: k }; pestana('buscar'); elegir(k);
+        PEDVOLVER = { id: p.id, k: k, y: window.scrollY }; pestana('buscar'); elegir(k);
       });
       lista.appendChild(f);
     });
@@ -2537,12 +2537,73 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       });
       c.appendChild(cer);
     }
+    if (!p.obs) c.appendChild(cajaReenviar(p, hechos2));
     var del = document.createElement('button'); del.type = 'button'; del.className = 'btn ancho'; del.style.marginTop = '12px'; del.textContent = 'Borrar este pedido';
     del.addEventListener('click', function () {
       if (!confirm('¿Borrar este pedido de este teléfono?')) return;
       PEDIDOS = PEDIDOS.filter(function (x) { return x.id !== p.id; }); PEDBORR[p.id] = 1; guardar('pedborr', PEDBORR); PEDABIERTO = null; guardarPedidos(); pintarPedidos();
     });
     c.appendChild(del);
+  }
+  /* ---- reenviar un pedido a otro usuario (todo, o solo lo que falta separar) ---- */
+  function repintarPed() { var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); }
+  function cajaReenviar(p, hechos) {
+    var caja = document.createElement('div'); caja.className = 'wrap'; caja.style.cssText = 'margin-top:12px;gap:8px';
+    if (!PEDRE || PEDRE.id !== p.id) {
+      var rb = document.createElement('button'); rb.type = 'button'; rb.className = 'btn ancho'; rb.textContent = 'Reenviar a otro usuario';
+      rb.addEventListener('click', function () {
+        PEDRE = { id: p.id, para: '', solo: hechos > 0 && hechos < p.items.length };
+        repintarPed(); bajarPresencia().then(function () { if (PEDRE && PEDRE.id === p.id) repintarPed(); });
+      });
+      caja.appendChild(rb); return caja;
+    }
+    var tit = document.createElement('div'); tit.className = 'nota'; tit.style.margin = '0'; tit.textContent = 'Reenviar este pedido a:'; caja.appendChild(tit);
+    var q = document.createElement('div'); q.className = 'quien'; q.setAttribute('aria-label', 'Conectados ahora');
+    var vistos = {}, actual = normNombre(PEDRE.para);
+    conectados(3).filter(function (x) { return x.dev !== CFG.dev; }).forEach(function (x) {
+      var k = normNombre(x.n); if (vistos[k]) return; vistos[k] = 1;
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = x.n; b.setAttribute('aria-pressed', actual === k ? 'true' : 'false');
+      b.addEventListener('click', function () { PEDRE.para = actual === k ? '' : x.n; repintarPed(); });
+      q.appendChild(b);
+    });
+    if (q.children.length) caja.appendChild(q);
+    var lb = document.createElement('label'); lb.className = 'campoc'; lb.textContent = 'Nombre del usuario';
+    var inp = document.createElement('input'); inp.type = 'text'; inp.autocomplete = 'off'; inp.placeholder = 'Nombre'; inp.value = PEDRE.para;
+    inp.addEventListener('input', function () { PEDRE.para = inp.value; });
+    lb.appendChild(inp); caja.appendChild(lb);
+    if (hechos > 0 && hechos < p.items.length) {
+      var f = document.createElement('div'); f.className = 'quien';
+      var sb = document.createElement('button'); sb.type = 'button'; sb.setAttribute('aria-pressed', PEDRE.solo ? 'true' : 'false');
+      sb.textContent = 'Solo los que faltan separar (' + (p.items.length - hechos) + ')';
+      sb.addEventListener('click', function () { PEDRE.solo = !PEDRE.solo; repintarPed(); });
+      f.appendChild(sb); caja.appendChild(f);
+    }
+    var ac = document.createElement('div'); ac.className = 'acciones';
+    var ok = document.createElement('button'); ok.type = 'button'; ok.className = 'btn pri'; ok.textContent = 'Reenviar';
+    ok.addEventListener('click', function () { reenviarPedido(p, ok); });
+    var no = document.createElement('button'); no.type = 'button'; no.className = 'btn'; no.textContent = 'Cancelar';
+    no.addEventListener('click', function () { PEDRE = null; repintarPed(); });
+    ac.appendChild(ok); ac.appendChild(no); caja.appendChild(ac);
+    return caja;
+  }
+  function reenviarPedido(p, boton) {
+    var para = (PEDRE && PEDRE.para || '').trim();
+    if (!para) { toast('Elegí o escribí a quién reenviarlo'); return; }
+    if (normNombre(para) === normNombre(CFG.nombre)) { toast('Ese sos vos'); return; }
+    var it = p.items.filter(function (x) { return !(PEDRE.solo && p.hechos && p.hechos[x[0]]); }).map(function (x) { return [x[0], x[1]]; });
+    if (!it.length) { toast('No hay libros para reenviar'); return; }
+    if (!nubeOn()) { toast('Para reenviar hace falta tener la Nube conectada'); return; }
+    var id = Date.now().toString(16) + Math.random().toString(16).slice(2, 6);
+    var cuerpo = { t: Date.now(), cliente: p.cliente || '', texto: (p.cliente ? 'Pedido de ' + p.cliente : 'Pedido') + ' reenviado por ' + (CFG.nombre || 'un compañero') + ': ' + it.length + (it.length === 1 ? ' libro' : ' libros') + '. Aceptá y miralo en Pedidos.',
+      para: normNombre(para), paraNombre: para, pedido: it, de: CFG.nombre || '' };
+    boton.disabled = true;
+    fetch(nubeBase() + '/msgs/' + id + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
+      .then(function (r) { if (!r.ok) throw new Error('http'); })
+      .then(function () {
+        MSGV[id] = 1; guardarMsgV(); cuerpo.id = id; agregarPedido(cuerpo, true);
+        PEDRE = null; toast('✓ Pedido reenviado a ' + para); repintarPed();
+      })
+      .catch(function () { toast('No se pudo reenviar: sin conexión'); boton.disabled = false; });
   }
   function enviarPedido() {
     var it = [];
@@ -2571,7 +2632,11 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   }
   $('pedEnviar').addEventListener('click', enviarPedido);
   $('pedPara').addEventListener('input', pintarQuien);
-  function abrirPedido(id) { PEDABIERTO = id; pestana('pedidos'); window.scrollTo({ top: 0 }); bajarHechos(); }
+  function abrirPedido(id, y) {                          // y: dónde estaba el pedido al abrir un libro; al volver queda en el mismo lugar
+    PEDABIERTO = id; pestana('pedidos'); window.scrollTo({ top: y || 0 });
+    if (y) { setTimeout(function () { window.scrollTo({ top: y }); }, 60); }
+    bajarHechos();
+  }
   function bajarMsgs() {
     enviarAcks();
     if (!nubeOn()) return Promise.resolve();
@@ -3352,7 +3417,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!$('ediPanel').hidden) { cerrarEdi(); return true; }
     if (!$('vistaPedidos').hidden && PEDABIERTO) { PEDABIERTO = null; pintarPedidos(); return true; }
     if ($('vistaBuscar').hidden) { pestana('buscar'); return true; }
-    if (sel >= 0 && PEDVOLVER && PEDVOLVER.k === sel) { var pv = PEDVOLVER; PEDVOLVER = null; sel = -1; pend = 0; pintarFicha(); pintarResultados(); abrirPedido(pv.id); return true; }
+    if (sel >= 0 && PEDVOLVER && PEDVOLVER.k === sel) { var pv = PEDVOLVER; PEDVOLVER = null; sel = -1; pend = 0; pintarFicha(); pintarResultados(); abrirPedido(pv.id, pv.y); return true; }
     if (sel >= 0 && res.length !== 1) { sel = -1; pend = 0; pintarFicha(); pintarResultados(); return true; }   // con un solo resultado, la ficha sale sola: se limpia la búsqueda
     if ($('q').value || hayFiltro() || sel >= 0) { $('q').value = ''; limpiarFiltros(); nuevaBusqueda(); return true; }
     return false;
