@@ -445,6 +445,11 @@ button.num { appearance: none; border: 0; border-bottom: 2px dotted var(--line);
     <input type="file" id="foArchivo" accept="image/*" multiple hidden>
     <div id="foEstado" class="nota"></div>
     <div class="acciones">
+      <button class="btn chico" id="foVaciar" type="button" hidden>Vaciar la cola</button>
+      <button class="btn chico" id="foVer" type="button">Ver y borrar subidas</button>
+    </div>
+    <div id="foSub" class="lista" hidden></div>
+    <div class="acciones">
       <button class="btn pri" id="foSubir" type="button">Subir</button>
       <button class="btn" id="foCerrar" type="button">Cerrar</button>
     </div>
@@ -781,7 +786,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var e = $('toast'); e.textContent = t; e.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 2600);
   }
-  var VERSION = 'v83';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
+  var VERSION = 'v84';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
   function estado() {
     var e = $('estado');
     var sub = MOV.filter(function (m) { return !m.subido && !m.ajeno; }).length;
@@ -2037,19 +2042,63 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var n = document.createElement('span'); n.className = 'fcnt'; n.id = 'foN' + i;
         bt.addEventListener('click', function () { FOFILA = i; $('foArchivo').click(); });
         inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); bt.click(); } });
-        d.appendChild(inp); d.appendChild(bt); d.appendChild(n); c.appendChild(d);
+        var qx = document.createElement('button'); qx.type = 'button'; qx.className = 'btn chico'; qx.id = 'foX' + i; qx.textContent = '×'; qx.hidden = true; qx.setAttribute('aria-label', 'Sacar las fotos de la fila ' + (i + 1));
+        qx.addEventListener('click', function () { (FOTOSEL[i] || []).forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); FOTOSEL[i] = []; pintarFotoMini(); });
+        d.appendChild(inp); d.appendChild(bt); d.appendChild(n); d.appendChild(qx); c.appendChild(d);
       })(i);
     }
     for (var k = 0; k < FOFILAS; k++) {
       var m = (FOTOSEL[k] || []).length, e = $('foN' + k);
-      e.textContent = m ? m + (m === 1 ? ' foto' : ' fotos') : 'sin fotos'; e.className = 'fcnt' + (m ? ' ok' : '');
+      e.textContent = m ? m + (m === 1 ? ' foto' : ' fotos') : 'sin fotos'; e.className = 'fcnt' + (m ? ' ok' : ''); $('foX' + k).hidden = !m;
     }
     $('foSubir').disabled = !FOTOSEL.some(function (f) { return f && f.length; });
   }
   function pintarFotoEstado(extra) {
     var t = FOTOQ.length ? 'En cola para subir: ' + FOTOQ.length + (FOTOQ.length === 1 ? ' foto' : ' fotos') + (nubeOn() ? '' : ' (falta conectar la nube)') + '.' : '';
     $('foEstado').textContent = [extra, t].filter(Boolean).join(' ');
+    $('foVaciar').hidden = !FOTOQ.length;
   }
+  /* cancelar: vaciar lo que espera en el teléfono, y borrar de la nube lo ya subido que la PC todavía no bajó */
+  var confVaciar = false;
+  $('foVaciar').addEventListener('click', function () {
+    var b = this;
+    if (!confVaciar) { confVaciar = true; b.textContent = 'Tocá de nuevo: se pierden ' + FOTOQ.length; setTimeout(function () { confVaciar = false; b.textContent = 'Vaciar la cola'; }, 4000); return; }
+    confVaciar = false; b.textContent = 'Vaciar la cola';
+    FOTOQ = []; guardarFotoQ().then(function () { pintarFotoEstado('Cola vaciada.'); });
+  });
+  function verSubidas() {
+    var box = $('foSub'); box.hidden = false; box.textContent = 'Buscando…';
+    fetch(nubeBase() + '/fotos_meta.json').then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }).then(function (d) {
+      var g = {}, yo = String(CFG.nombre || ''), todos = nivel() === 'admin';
+      Object.keys(d || {}).forEach(function (id) {
+        var m = d[id]; if (!m || (!todos && String(m.q || '') !== yo)) return;
+        var k = (m.u || '') + '\u0001' + (m.q || '');
+        (g[k] = g[k] || { u: m.u || '?', q: m.q || '', ids: [], t: 0 }).ids.push(id); g[k].t = Math.max(g[k].t, m.t || 0);
+      });
+      var ks = Object.keys(g).sort(function (a, b) { return g[b].t - g[a].t; });
+      box.innerHTML = '';
+      if (!ks.length) { box.textContent = 'No hay fotos subidas esperando en la PC.'; return; }
+      ks.forEach(function (k) {
+        var x = g[k], f = document.createElement('div'); f.className = 'rev';
+        var t = document.createElement('div'); t.className = 'txt';
+        var a = document.createElement('div'); a.className = 't'; a.textContent = x.u + ' · ' + x.ids.length + (x.ids.length === 1 ? ' foto' : ' fotos');
+        var m = document.createElement('div'); m.className = 'm'; m.textContent = (x.q ? x.q + ' · ' : '') + new Date(x.t).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        t.appendChild(a); t.appendChild(m);
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'btn chico'; b.textContent = 'Borrar'; var conf = false;
+        b.addEventListener('click', function () {
+          if (!conf) { conf = true; b.textContent = '¿Seguro?'; setTimeout(function () { conf = false; b.textContent = 'Borrar'; }, 3500); return; }
+          b.disabled = true; b.textContent = '…';
+          x.ids.reduce(function (p, id) {
+            return p.then(function () {
+              return fetch(nubeBase() + '/fotos/' + id + '.json', { method: 'DELETE' }).then(function () { return fetch(nubeBase() + '/fotos_meta/' + id + '.json', { method: 'DELETE' }); });
+            });
+          }, Promise.resolve()).then(function () { toast('Fotos borradas'); verSubidas(); }, function () { b.disabled = false; b.textContent = 'Borrar'; toast('No pude borrar: revisá la conexión'); });
+        });
+        f.appendChild(t); f.appendChild(b); box.appendChild(f);
+      });
+    }).catch(function () { box.textContent = 'No pude consultar la nube.'; });
+  }
+  $('foVer').addEventListener('click', function () { if ($('foSub').hidden) verSubidas(); else $('foSub').hidden = true; });
   function abrirFoto() {
     if (!nubeOn()) { toast('Primero conectá la nube'); return; }
     var dl = $('foLista'); dl.innerHTML = '';
@@ -2059,7 +2108,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     FOTOSEL = []; $('foFilas').querySelectorAll('input').forEach(function (x) { x.value = ''; }); pintarFotoMini(); pintarFotoEstado();
     $('fotoPanel').hidden = false; $('foU').focus();
   }
-  function cerrarFoto() { $('fotoPanel').hidden = true; FOTOSEL.forEach(function (fs) { (fs || []).forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); }); FOTOSEL = []; }
+  function cerrarFoto() { $('fotoPanel').hidden = true; $('foSub').hidden = true; FOTOSEL.forEach(function (fs) { (fs || []).forEach(function (f) { try { URL.revokeObjectURL(f.url); } catch (e) {} }); }); FOTOSEL = []; }
   $('btnFoto').addEventListener('click', abrirFoto);
   $('foCerrar').addEventListener('click', cerrarFoto);
   $('foArchivo').addEventListener('change', function () {
@@ -2096,7 +2145,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       if (!FOTOQ.length) return Promise.resolve();
       var f = FOTOQ[0], put = function (ruta, cuerpo) { return fetch(nubeBase() + ruta + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) }).then(function (r) { if (!r.ok) throw new Error('http'); }); };
       return put('/fotos/' + f.id, { img: f.img }).then(function () { return put('/fotos_meta/' + f.id, { u: f.u, q: f.q, t: f.t, w: f.w, h: f.h }); })
-        .then(function () { FOTOQ.shift(); hechas++; return guardarFotoQ(); }).then(uno);
+        .then(function () { if (FOTOQ[0] === f) FOTOQ.shift(); hechas++; return guardarFotoQ(); }).then(uno);
     }
     return uno().then(function () { if (hechas) toast('✓ ' + hechas + (hechas === 1 ? ' foto subida' : ' fotos subidas')); }, function () {})
       .then(function () { fotoSubiendo = false; if (!$('fotoPanel').hidden) pintarFotoEstado(); });
