@@ -194,6 +194,15 @@ body.consulta #fDep { pointer-events: none; }
 .ubp { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 800; white-space: nowrap; vertical-align: 1px; }
 .fila.ped .txt { cursor: pointer; }
 .fila.ped.hecho .t { text-decoration: line-through; color: var(--muted); }
+.estados { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.estados button { appearance: none; border: 2px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; border-radius: 10px; min-height: 38px; padding: 4px 12px; cursor: pointer; }
+.estados button[aria-pressed="true"].ok { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.estados button[aria-pressed="true"].mm { background: #fff3d6; border-color: #d9a100; color: #8a6400; }
+.estados button[aria-pressed="true"].no { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.estados button.ub { margin-left: auto; font-weight: 600; }
+.fila.ped.resp { background: var(--panel); }
+:root[data-theme="dark"] .estados button[aria-pressed="true"].mm { background: #3b3010; color: #f0c85a; border-color: #d9a100; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .estados button[aria-pressed="true"].mm { background: #3b3010; color: #f0c85a; border-color: #d9a100; } }
 .chk { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); color: var(--accent-ink); font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 .chk[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
 .pedcab .sub { color: var(--muted); font-size: 13px; font-weight: 400; display: block; }
@@ -807,7 +816,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var e = $('toast'); e.textContent = t; e.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 2600);
   }
-  var VERSION = 'v88';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
+  var VERSION = 'v89';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
   function estado() {
     var e = $('estado');
     var sub = MOV.filter(function (m) { return !m.subido && !m.ajeno; }).length;
@@ -1631,7 +1640,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
   function guardarUbUno() {
     var k = UBSEL; if (k < 0) return;
     var v = limpiarUb($('ubIn').value);
-    cerrarUb(); ponerUbic(k, v); if (k === sel) pintarFicha(); toast(v ? '📍 ' + v + (avisoUb(v) ? ' · ⚠ ' + avisoUb(v) : '') : 'Ubicación borrada');
+    cerrarUb(); ponerUbic(k, v); if (k === sel) pintarFicha(); if ($('vistaPedidos') && !$('vistaPedidos').hidden && PEDABIERTO) repintarPed(); toast(v ? '📍 ' + v + (avisoUb(v) ? ' · ⚠ ' + avisoUb(v) : '') : 'Ubicación borrada');
   }
   function renombrarLista(lista, v, viejo) {                    // todos los libros de `lista` pasan a la ubicación v (se sube a la nube)
     var ahora = Date.now(), q = CFG.nombre || '';
@@ -2379,6 +2388,18 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     p.ht[cod] = Date.now(); p.hn[cod] = on ? (CFG.nombre || '') : ''; p.hp[cod] = 1;
     p.ackPend = true; guardarPedidos(); subirHechos(); enviarAcks();
   }
+  /* lista para controlar: cada libro se responde «OK» (están todos), «Más o menos» (hay pero no todos / no coincide) o «No está» */
+  function marcarEstado(p, cod, e) {
+    p.he = p.he || {};
+    var nuevo = p.he[cod] === e ? '' : e;                 // tocar de nuevo el mismo estado lo borra
+    if (nuevo) p.he[cod] = nuevo; else delete p.he[cod];
+    marcarHecho(p, cod, !!nuevo);
+  }
+  function conteoControl(p) {
+    var c = { ok: 0, mm: 0, no: 0 };
+    p.items.forEach(function (x) { var e = p.he && p.he[x[0]]; if (c[e] != null && p.hechos && p.hechos[x[0]]) c[e]++; });
+    return c;
+  }
   function subirHechos() {
     if (!nubeOn()) return;
     PEDIDOS.forEach(function (q) {
@@ -2386,7 +2407,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       Object.keys(q.hp).forEach(function (cod) {
         var t = q.ht && q.ht[cod]; if (!t) { delete q.hp[cod]; return; }
         fetch(nubeBase() + '/pedhechos/' + encodeURIComponent(q.id) + '/' + encodeURIComponent(cod) + '.json',
-          { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ h: q.hechos[cod] ? 1 : 0, t: t, n: q.hn[cod] || '' }) })
+          { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ h: q.hechos[cod] ? 1 : 0, t: t, n: q.hn[cod] || '', e: (q.he && q.he[cod]) || '' }) })
           .then(function (r) { if (!r.ok) throw new Error('http'); if (q.ht[cod] === t) { delete q.hp[cod]; guardarPedidos(); } })
           .catch(function () {});
       });
@@ -2417,6 +2438,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
           var r = h[cod]; if (!r || typeof r !== 'object') return;
           if (p.hp[cod] || (r.t || 0) <= (p.ht[cod] || 0)) return;       // lo mío más nuevo (o todavía sin subir) manda
           if (r.h) p.hechos[cod] = 1; else delete p.hechos[cod];
+          p.he = p.he || {}; if (r.e) p.he[cod] = r.e; else delete p.he[cod];
           p.ht[cod] = r.t || 0; p.hn[cod] = r.n || '';
           cambio = true; p.ackPend = true; if (PEDABIERTO === p.id) abierto = true;
         });
@@ -2441,7 +2463,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (PEDIDOS.length >= 150 && (m.t || 0) < PEDIDOS[0].t) return false;
     var it = limpiarItems(m.pedido);
     if (!it.length) return false;
-    PEDIDOS.push({ id: id, t: m.t || Date.now(), items: it, hechos: {}, cliente: String(m.cliente || '').slice(0, 80), de: m.de || '', para: m.paraNombre || '', mio: mio === true, obs: mio === 'obs' });   // obs: pedido de otro teléfono que ve el administrador (sin avisos ni confirmaciones)
+    PEDIDOS.push({ id: id, t: m.t || Date.now(), items: it, hechos: {}, he: {}, ctl: !!m.ctl, cliente: String(m.cliente || '').slice(0, 80), de: m.de || '', para: m.paraNombre || '', mio: mio === true, obs: mio === 'obs' });   // obs: pedido de otro teléfono que ve el administrador (sin avisos ni confirmaciones)
     PEDIDOS.sort(function (a, b) { return a.t - b.t; });
     if (mio === false) PEDIDOS.forEach(function (q) { if (q.id === id) { q.rec = Date.now(); q.ackPend = true; } });
     guardarPedidos();
@@ -2475,9 +2497,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
         var f = document.createElement('button'); f.type = 'button'; f.className = 'fila';
         var t = document.createElement('div'); t.className = 'txt';
         var a = document.createElement('div'); a.className = 't';
-        a.textContent = (q.cliente || 'Pedido') + ' · ' + q.items.length + (q.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot + (tot === 1 ? ' ejemplar' : ' ejemplares');
+        a.textContent = q.ctl ? 'Control · ' + (q.cliente || 'Lista') + ' · ' + q.items.length + (q.items.length === 1 ? ' libro' : ' libros')
+          : (q.cliente || 'Pedido') + ' · ' + q.items.length + (q.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot + (tot === 1 ? ' ejemplar' : ' ejemplares');
         var m = document.createElement('div'); m.className = 'm';
-        m.textContent = fechaCorta(q.t) + (q.mio ? ' · enviado' + (q.para ? ' a ' + q.para : '') : q.obs ? ' · para ' + (q.para || '?') + (q.de ? ' · de ' + q.de : '') : q.de ? ' · de ' + q.de : ' · de la PC') + ' · separados ' + hechos + ' de ' + q.items.length + (q.obs && q.items.length ? ' (' + Math.round(100 * hechos / q.items.length) + '%)' : '');
+        m.textContent = fechaCorta(q.t) + (q.mio ? ' · enviado' + (q.para ? ' a ' + q.para : '') : q.obs ? ' · para ' + (q.para || '?') + (q.de ? ' · de ' + q.de : '') : q.de ? ' · de ' + q.de : ' · de la PC') + (q.ctl ? ' · controlados ' : ' · separados ') + hechos + ' de ' + q.items.length + (q.obs && q.items.length ? ' (' + Math.round(100 * hechos / q.items.length) + '%)' : '');
         t.appendChild(a); t.appendChild(m); f.appendChild(t);
         var d2 = document.createElement('div'); d2.className = 'd'; d2.textContent = pedCompleto(q) ? '✓' : q.cierre ? 'Cerrado' : ''; f.appendChild(d2);
         f.addEventListener('click', function () { PEDABIERTO = q.id; pintarPedidos(); window.scrollTo({ top: 0 }); });
@@ -2492,28 +2515,47 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'btn chico'; bt.textContent = '‹ Pedidos';
     bt.addEventListener('click', function () { PEDABIERTO = null; pintarPedidos(); });
     var tb2 = document.createElement('b');
-    tb2.textContent = (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot2 + (tot2 === 1 ? ' ejemplar' : ' ejemplares');
+    tb2.textContent = p.ctl ? 'Control · ' + (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros')
+      : (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot2 + (tot2 === 1 ? ' ejemplar' : ' ejemplares');
     var sub = document.createElement('span'); sub.className = 'sub';
-    sub.textContent = (p.cierre ? 'Cerrado' + (p.cerrado ? ' ' + fechaCorta(p.cerrado) : '') + ' · ' : '') + (p.obs ? 'Para ' + (p.para || '?') + (p.de ? ' · de ' + p.de : '') + ' · solo lectura · ' : '') + 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares';
+    sub.textContent = (p.cierre ? 'Cerrado' + (p.cerrado ? ' ' + fechaCorta(p.cerrado) : '') + ' · ' : '') + (p.obs ? 'Para ' + (p.para || '?') + (p.de ? ' · de ' + p.de : '') + ' · solo lectura · ' : '') + (p.ctl ? (function () { var cc = conteoControl(p); return 'Controlados ' + hechos2 + ' de ' + p.items.length + ' · OK ' + cc.ok + ' · Más o menos ' + cc.mm + ' · No está ' + cc.no; })()
+      : 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares');
     tb2.appendChild(sub);
     cab.appendChild(bt); cab.appendChild(tb2); c.appendChild(cab);
     var lista = document.createElement('div'); lista.className = 'lista';
     p.items.forEach(function (it) {
       var k = S ? libroPorCod(it[0]) : null, ok = !!(p.hechos && p.hechos[it[0]]);
-      var f = document.createElement('div'); f.className = 'fila ped' + (ok ? ' hecho' : '') + (k == null ? ' nohay' : '');
+      var f = document.createElement('div'); f.className = 'fila ped' + (p.ctl ? (ok ? ' resp' : '') : (ok ? ' hecho' : '')) + (k == null ? ' nohay' : '');
       var ck = document.createElement('button'); ck.type = 'button'; ck.className = 'chk'; ck.setAttribute('role', 'checkbox');
       ck.setAttribute('aria-checked', ok); ck.setAttribute('aria-label', 'Separado'); ck.textContent = ok ? '✓' : '';
       if (p.obs) ck.disabled = true;
-      ck.addEventListener('click', function () { if (p.obs) return; marcarHecho(p, it[0], !(p.hechos && p.hechos[it[0]])); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); });
+      if (!p.ctl) ck.addEventListener('click', function () { if (p.obs) return; marcarHecho(p, it[0], !(p.hechos && p.hechos[it[0]])); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y }); });
       var t = document.createElement('div'); t.className = 'txt';
       var a = document.createElement('div'); a.className = 't';
       var ubp = k != null ? ubicDe(k) : '';
       if (ubp) { var bu = document.createElement('span'); bu.className = 'ubp'; bu.textContent = '📍 ' + ubp; a.appendChild(bu); }     // dónde está, al lado del título
       a.appendChild(document.createTextNode(k != null ? S.tit[k] : it[0]));
       var m = document.createElement('div'); m.className = 'm';
-      m.textContent = 'Pedido: ' + it[1] + (k != null ? ' · ' + S.cod[k] : '') + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock') + (ok && p.hn && p.hn[it[0]] && normNombre(p.hn[it[0]]) !== normNombre(CFG.nombre) ? ' · separó ' + p.hn[it[0]] : '');
+      m.textContent = (p.ctl ? (k != null ? S.cod[k] : it[0]) : 'Pedido: ' + it[1] + (k != null ? ' · ' + S.cod[k] : '')) + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock') + (ok && p.hn && p.hn[it[0]] && normNombre(p.hn[it[0]]) !== normNombre(CFG.nombre) ? (p.ctl ? ' · controló ' : ' · separó ') + p.hn[it[0]] : '');
       t.appendChild(a); t.appendChild(m);
-      f.appendChild(ck); f.appendChild(t);
+      if (p.ctl) {
+        var es = document.createElement('div'); es.className = 'estados'; es.setAttribute('role', 'group'); es.setAttribute('aria-label', 'Resultado del control');
+        [['ok', '✓ OK'], ['mm', '≈ Más o menos'], ['no', '✗ No está']].forEach(function (par) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = par[0]; b.textContent = par[1];
+          b.setAttribute('aria-pressed', (p.he && p.he[it[0]] === par[0] && ok) ? 'true' : 'false');
+          if (p.obs) b.disabled = true;
+          b.addEventListener('click', function (e) { e.stopPropagation(); if (p.obs) return; marcarEstado(p, it[0], par[0]); repintarPed(); });
+          es.appendChild(b);
+        });
+        if (k != null && !p.obs) {
+          var ub = document.createElement('button'); ub.type = 'button'; ub.className = 'ub'; ub.textContent = '📍 ' + (ubp || 'Ubicación');
+          ub.addEventListener('click', function (e) { e.stopPropagation(); var previo = sel; sel = k; editarUbic(); sel = previo; });
+          es.appendChild(ub);
+        }
+        t.appendChild(es);
+      }
+      if (!p.ctl) f.appendChild(ck);
+      f.appendChild(t);
       if (k != null) { var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]); f.appendChild(d); }
       t.addEventListener('click', function () {
         if (k == null) { toast('Ese libro no está en tu stock'); return; }
@@ -2525,13 +2567,14 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!p.obs) {
       var cer = document.createElement('button'); cer.type = 'button'; cer.className = 'btn ancho'; cer.style.marginTop = '12px';
       var faltan = p.items.length - hechos2;
-      cer.textContent = pedCompleto(p) ? '✓ Pedido completo' : p.cierre ? 'Reabrir el pedido' : 'Cerrar el pedido' + (faltan ? ' (faltan ' + faltan + (faltan === 1 ? ' libro' : ' libros') + ')' : '');
+      var nom = p.ctl ? 'control' : 'pedido';
+      cer.textContent = pedCompleto(p) ? (p.ctl ? '✓ Control completo' : '✓ Pedido completo') : p.cierre ? 'Reabrir el ' + nom : 'Cerrar el ' + nom + (faltan ? ' (faltan ' + faltan + (faltan === 1 ? ' libro' : ' libros') + ')' : '');
       cer.disabled = !!pedCompleto(p);
       cer.addEventListener('click', function () {
-        if (p.cierre) { p.cierre = false; p.cerrado = 0; toast('Pedido reabierto'); }
+        if (p.cierre) { p.cierre = false; p.cerrado = 0; toast(p.ctl ? 'Control reabierto' : 'Pedido reabierto'); }
         else {
-          if (faltan && !confirm('Faltan ' + faltan + (faltan === 1 ? ' libro' : ' libros') + ' por separar. ¿Cerrar el pedido igual? Se le avisa a la PC.')) return;
-          p.cierre = true; p.cerrado = Date.now(); toast('✓ Pedido cerrado');
+          if (faltan && !confirm('Faltan ' + faltan + (faltan === 1 ? ' libro' : ' libros') + (p.ctl ? ' por controlar. ¿Cerrar el control igual? Se le avisa a la PC.' : ' por separar. ¿Cerrar el pedido igual? Se le avisa a la PC.'))) return;
+          p.cierre = true; p.cerrado = Date.now(); toast(p.ctl ? '✓ Control cerrado' : '✓ Pedido cerrado');
         }
         p.ackPend = true; guardarPedidos(); enviarAcks(); var y = window.scrollY; pintarPedidos(); window.scrollTo({ top: y });
       });
@@ -2595,7 +2638,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     if (!nubeOn()) { toast('Para reenviar hace falta tener la Nube conectada'); return; }
     var id = Date.now().toString(16) + Math.random().toString(16).slice(2, 6);
     var cuerpo = { t: Date.now(), cliente: p.cliente || '', texto: (p.cliente ? 'Pedido de ' + p.cliente : 'Pedido') + ' reenviado por ' + (CFG.nombre || 'un compañero') + ': ' + it.length + (it.length === 1 ? ' libro' : ' libros') + '. Aceptá y miralo en Pedidos.',
-      para: normNombre(para), paraNombre: para, pedido: it, de: CFG.nombre || '' };
+      para: normNombre(para), paraNombre: para, pedido: it, de: CFG.nombre || '', ctl: p.ctl ? 1 : 0 };
     boton.disabled = true;
     fetch(nubeBase() + '/msgs/' + id + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
       .then(function (r) { if (!r.ok) throw new Error('http'); })
