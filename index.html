@@ -2518,7 +2518,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     tb2.textContent = p.ctl ? 'Control · ' + (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros')
       : (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot2 + (tot2 === 1 ? ' ejemplar' : ' ejemplares');
     var sub = document.createElement('span'); sub.className = 'sub';
-    sub.textContent = (p.cierre ? 'Cerrado' + (p.cerrado ? ' ' + fechaCorta(p.cerrado) : '') + ' · ' : '') + (p.obs ? 'Para ' + (p.para || '?') + (p.de ? ' · de ' + p.de : '') + ' · solo lectura · ' : '') + (p.ctl ? (function () { var cc = conteoControl(p); return 'Controlados ' + hechos2 + ' de ' + p.items.length + ' · OK ' + cc.ok + ' · Más o menos ' + cc.mm + ' · No está ' + cc.no; })()
+    sub.textContent = (p.cierre ? 'Cerrado' + (p.cerrado ? ' ' + fechaCorta(p.cerrado) : '') + ' · ' : '') + (p.obs ? 'Para ' + (p.para || '?') + (p.de ? ' · de ' + p.de : '') + ' · solo lectura · ' : '') + (p.ctl ? (function () { var cc = conteoControl(p); return 'Controlados ' + hechos2 + ' de ' + p.items.length + ' · OK ' + cc.ok + ' · + o − ' + cc.mm + ' · ✗ ' + cc.no; })()
       : 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares');
     tb2.appendChild(sub);
     cab.appendChild(bt); cab.appendChild(tb2); c.appendChild(cab);
@@ -2540,7 +2540,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       t.appendChild(a); t.appendChild(m);
       if (p.ctl) {
         var es = document.createElement('div'); es.className = 'estados'; es.setAttribute('role', 'group'); es.setAttribute('aria-label', 'Resultado del control');
-        [['ok', '✓ OK'], ['mm', '≈ Más o menos'], ['no', '✗ No está']].forEach(function (par) {
+        [['ok', '✓ OK'], ['mm', '+ o −'], ['no', '✗']].forEach(function (par) {
           var b = document.createElement('button'); b.type = 'button'; b.className = par[0]; b.textContent = par[1];
           b.setAttribute('aria-pressed', (p.he && p.he[it[0]] === par[0] && ok) ? 'true' : 'false');
           if (p.obs) b.disabled = true;
