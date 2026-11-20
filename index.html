@@ -2388,12 +2388,29 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     p.ht[cod] = Date.now(); p.hn[cod] = on ? (CFG.nombre || '') : ''; p.hp[cod] = 1;
     p.ackPend = true; guardarPedidos(); subirHechos(); enviarAcks();
   }
-  /* lista para controlar: cada libro se responde «OK» (están todos), «Más o menos» (hay pero no todos / no coincide) o «No está» */
+  /* lista para controlar: cada libro se responde «OK» (están todos), ✗ (pone el stock en 0) */
   function marcarEstado(p, cod, e) {
-    p.he = p.he || {};
-    var nuevo = p.he[cod] === e ? '' : e;                 // tocar de nuevo el mismo estado lo borra
+    p.he = p.he || {}; p.hm = p.hm || {};
+    var nuevo = p.he[cod] === e ? '' : e;                 // tocar de nuevo el mismo estado lo borra (y deshace lo que se anotó)
+    var k = S ? libroPorCod(cod) : null;
+    if (p.hm[cod] && k != null) {                         // lo anotado antes por este libro se da vuelta
+      var mv = MOV.filter(function (x) { return x.id === p.hm[cod]; })[0];
+      if (mv && !mv.rev && (mv.delta || 0) !== 0) registrar(k, -(mv.delta || 0), mv.id);
+      delete p.hm[cod];
+    }
     if (nuevo) p.he[cod] = nuevo; else delete p.he[cod];
+    if (nuevo && k != null) {
+      if (!puedeContar()) toast('Quedó marcado, pero sin el PIN de conteo no se cambia el stock');
+      else {
+        var delta = nuevo === 'no' ? -S.d1[k] : 0;         // ✗ deja el libro en 0; OK confirma la cantidad que figura
+        if (delta < 0 || nuevo === 'ok') {
+          var m = registrar(k, delta); p.hm[cod] = m.id;
+          toast(nuevo === 'no' ? (delta ? '✗ Dep 1: ' + m.antes + ' → 0' : '✗ Dep 1 ya estaba en 0') : '✓ Contado: Dep 1 ' + m.antes);
+        }
+      }
+    }
     marcarHecho(p, cod, !!nuevo);
+    contar(); try { pintarMov(); } catch (e2) {}
   }
   function conteoControl(p) {
     var c = { ok: 0, mm: 0, no: 0 };
@@ -2518,7 +2535,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     tb2.textContent = p.ctl ? 'Control · ' + (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros')
       : (p.cliente ? p.cliente + ' · ' : '') + p.items.length + (p.items.length === 1 ? ' libro' : ' libros') + ' · ' + tot2 + (tot2 === 1 ? ' ejemplar' : ' ejemplares');
     var sub = document.createElement('span'); sub.className = 'sub';
-    sub.textContent = (p.cierre ? 'Cerrado' + (p.cerrado ? ' ' + fechaCorta(p.cerrado) : '') + ' · ' : '') + (p.obs ? 'Para ' + (p.para || '?') + (p.de ? ' · de ' + p.de : '') + ' · solo lectura · ' : '') + (p.ctl ? (function () { var cc = conteoControl(p); return 'Controlados ' + hechos2 + ' de ' + p.items.length + ' · OK ' + cc.ok + ' · + o − ' + cc.mm + ' · ✗ ' + cc.no; })()
+    sub.textContent = (p.cierre ? 'Cerrado' + (p.cerrado ? ' ' + fechaCorta(p.cerrado) : '') + ' · ' : '') + (p.obs ? 'Para ' + (p.para || '?') + (p.de ? ' · de ' + p.de : '') + ' · solo lectura · ' : '') + (p.ctl ? (function () { var cc = conteoControl(p); return 'Controlados ' + hechos2 + ' de ' + p.items.length + ' · OK ' + cc.ok + ' · ✗ ' + cc.no; })()
       : 'Separados ' + hechos2 + ' de ' + p.items.length + ' libros · ' + hej2 + ' de ' + tot2 + ' ejemplares');
     tb2.appendChild(sub);
     cab.appendChild(bt); cab.appendChild(tb2); c.appendChild(cab);
@@ -2540,7 +2557,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       t.appendChild(a); t.appendChild(m);
       if (p.ctl) {
         var es = document.createElement('div'); es.className = 'estados'; es.setAttribute('role', 'group'); es.setAttribute('aria-label', 'Resultado del control');
-        [['ok', '✓ OK'], ['mm', '+ o −'], ['no', '✗']].forEach(function (par) {
+        [['ok', '✓ OK'], ['no', '✗']].forEach(function (par) {
           var b = document.createElement('button'); b.type = 'button'; b.className = par[0]; b.textContent = par[1];
           b.setAttribute('aria-pressed', (p.he && p.he[it[0]] === par[0] && ok) ? 'true' : 'false');
           if (p.obs) b.disabled = true;
