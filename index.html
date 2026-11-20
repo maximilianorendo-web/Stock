@@ -193,6 +193,9 @@ body.consulta #fDep { pointer-events: none; }
 .fila.ped { cursor: default; gap: 10px; }
 .ubp { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 800; white-space: nowrap; vertical-align: 1px; }
 .fila.ped .txt { cursor: pointer; }
+.qb { display: inline-block; margin-right: 8px; padding: 1px 9px; border-radius: 8px; background: var(--panel); border: 2px solid var(--line); color: var(--muted); font-size: 15px; font-weight: 800; white-space: nowrap; vertical-align: 1px; }
+.qb.varios { background: #ffd54a; border-color: #e0a800; color: #3a2a00; }
+.fila.ped .d small { display: block; font-size: 10px; font-weight: 600; color: var(--muted); text-align: center; }
 .fila.ped.hecho .t { text-decoration: line-through; color: var(--muted); }
 .estados { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .estados button { appearance: none; border: 2px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; border-radius: 10px; min-height: 38px; padding: 4px 12px; cursor: pointer; }
@@ -816,7 +819,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
     var e = $('toast'); e.textContent = t; e.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 2600);
   }
-  var VERSION = 'v91';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
+  var VERSION = 'v93';                                   // igual al número de la caché de sw.js: se ve arriba para saber qué versión corre
   function estado() {
     var e = $('estado');
     var sub = MOV.filter(function (m) { return !m.subido && !m.ajeno; }).length;
@@ -2551,9 +2554,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       var a = document.createElement('div'); a.className = 't';
       var ubp = k != null ? ubicDe(k) : '';
       if (ubp) { var bu = document.createElement('span'); bu.className = 'ubp'; bu.textContent = '📍 ' + ubp; a.appendChild(bu); }     // dónde está, al lado del título
+      if (!p.ctl) { var qb = document.createElement('span'); var qn = parseInt(it[1], 10) || 1; qb.className = 'qb' + (qn > 1 ? ' varios' : ''); qb.textContent = '× ' + qn; qb.setAttribute('aria-label', qn + (qn === 1 ? ' ejemplar' : ' ejemplares')); a.appendChild(qb); }   // cuántos ejemplares: grande y amarillo si es más de uno
       a.appendChild(document.createTextNode(k != null ? S.tit[k] : it[0]));
       var m = document.createElement('div'); m.className = 'm';
-      m.textContent = (p.ctl ? (k != null ? S.cod[k] : it[0]) : 'Pedido: ' + it[1] + (k != null ? ' · ' + S.cod[k] : '')) + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock') + (ok && p.hn && p.hn[it[0]] && normNombre(p.hn[it[0]]) !== normNombre(CFG.nombre) ? (p.ctl ? ' · controló ' : ' · separó ') + p.hn[it[0]] : '');
+      m.textContent = (k != null ? S.cod[k] : it[0]) + (k != null ? ' · ' + [S.aut[k], S.edi[k]].filter(Boolean).join(' · ') : ' · no está en tu stock') + (ok && p.hn && p.hn[it[0]] && normNombre(p.hn[it[0]]) !== normNombre(CFG.nombre) ? (p.ctl ? ' · controló ' : ' · separó ') + p.hn[it[0]] : '');
       t.appendChild(a); t.appendChild(m);
       if (p.ctl) {
         var es = document.createElement('div'); es.className = 'estados'; es.setAttribute('role', 'group'); es.setAttribute('aria-label', 'Resultado del control');
@@ -2573,7 +2577,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
       }
       if (!p.ctl) f.appendChild(ck);
       f.appendChild(t);
-      if (k != null) { var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]); f.appendChild(d); }
+      if (k != null) { var d = document.createElement('div'); d.className = 'd' + (S.d1[k] <= 0 ? ' cero' : ''); d.textContent = String(S.d1[k]); var sm = document.createElement('small'); sm.textContent = 'stock'; d.appendChild(sm); f.appendChild(d); }
       t.addEventListener('click', function () {
         if (k == null) { toast('Ese libro no está en tu stock'); return; }
         PEDVOLVER = { id: p.id, k: k, y: window.scrollY }; pestana('buscar'); elegir(k);
